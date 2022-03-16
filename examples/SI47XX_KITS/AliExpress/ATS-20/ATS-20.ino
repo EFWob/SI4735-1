@@ -86,28 +86,35 @@
 // CONFIG-SECTION
 //#define DEBUG                 // if defined, Serial output will show some info on button press events (at 115200 baud)
 //#define DEBUG_BUTTONS_ONLY    // if defined (in addition to DEBUG), only button events will be reported on Serial, no radio function
-                              // (use this to adjust the BUTTONTIME_XXXX-defines in include file "SimpleButton.h" to your liking
+                              // (use this to adjust the BUTTONTIME_XXXX-defines in include file "SimpleButton.h" to your liking)
 
-// SPLASH-CONFIG
+// INTRO-CONFIG
 
-const char* splashlines[] =   // Defines the splash lines to be shown at startup. At most 4 entries can be defined (excess will be ignored)
-                              // If defined as empty array (splaslines[] = {};), no splash info will be shown
+char* introlines[] =   // Defines the intro lines to be shown at startup. At most 4 entries can be defined (excess will be ignored)
+                              // If defined as empty array (introlines[] = {};), no intro screen will be shown
 {
   "SI473X",
   "Arduino Library",
   "All in One Radio",
-  "V3.0.7F-By PU2CLR"
+  "V3.0.8F-By PU2CLR"
 };
 
-#define SPLASH_LINEDELAY         500    // Delay (ms) before showing the next splashline. If set to 0, all lines defined in splashlines 
-                                        // will be shown at once. (Delay will not apply for the last line of splash).
+#define INTRO_LINEDELAY         1500   // Delay (ms) before showing the next line of intro screen. If set to 0, all lines defined in 
+                                       // introlines [] will be shown at once. 
 
-#define SPLASH_ENDDELAY          2500   // Delay (ms) to display full splash screen after last line has been shown. 
+#define INTRO_ENDDELAY          4000   // Delay (ms) to display full intro screen after last line has been shown (plus INTRO_LINEDELAYTIME). 
 
-// If both SPLASH_LINEDELAY and SPLASH_ENDDELAY are set to 0, splash will not show at all!
+// If both INTRO_LINEDELAY and INTRO_ENDDELAY are set to 0, intro screen will not show at all!
 
-#define SPLASH_SILENT            0      // If set to != 0, Audio will start only after splash is done 
-                                        // (otherwise already audible during splash)
+#define INTRO_LONGPRESSDELAY      2    // Defines how long encoder must be pressed for longpress detection during intro.
+                                       //   -if 0, longpress is disabled (will be treated as shortpress and cancel the intro)
+                                       //   -if enabled, a longpress with the defined timeout will erase EEPROM
+
+#define INTRO_CLREEPROMDELAY    2000   // Delay (ms) to display "EEPROM erased" information if radio started with Encoder button pressed.
+                                       // (If button is pressed longer, message will stay untill button released)
+                                       
+#define INTRO_SILENT            0      // If set to != 0, Audio will start only after intro screen is done 
+                                        // (otherwise already audible during intro)
 
 // FUNCTION-CONFIG
 /* Some of the defines refer to functions that can be reached by longpress on a specific button. The timings described here are the
@@ -120,122 +127,136 @@ const char* splashlines[] =   // Defines the splash lines to be shown at startup
  *  behave the same as with simple click/longpress.
  */
 
-#define DISPLAY_OLDSTYLE           0 // Set to != 0 to use old style display
-                                     //  - Old style display: in BFO-Mode, the frequency is inverted. For every other function, the
-                                     //       function name preceeding the changing parameter is inverted (but not the parameter itself)
-                                     //  - New style display: both function name and parameter are inverted. Also for BFO setting
-                                     //       (in BFO-Mode frequency stays in not inverted display) 
+#define DEFAULT_VOLUME     45 // change it for your favorite sound volume (only used, if EEPROM is erased)
 
-#define RDS_OFF                    1 // Set to 0/1, if RDS should be disabled/enabled for FM at startup (RDS can be toggled ON/OFF in 
-                                     // FM mode by shortpress on "Mode"-Button later)
+#define DEFAULT_BAND lastBand // default band to switch to, if no last station info is stored to EEPROM. 
+                              //   -must be a valid index into the band table band[] (see below)
+                              //   -can be set to "lastBand" (w/o the quotation marks!) to address the last band defined in the table
 
-#define ENCODER_ENTER              1 // If defined != 0, and any command is selected, Shortpress on Encoder will end the currently selected 
-                                     // command immediately (before default timeout of 4 seconds)
+#define DISPLAY_OLDSTYLE   0 // Set to != 0 to use old style display
+                             //  - Old style display: in BFO-Mode, the frequency is inverted. For every other function, the
+                             //       function name preceeding the changing parameter is inverted (but not the parameter itself)
+                             //  - New style display: both function name and parameter are inverted. Also for BFO setting
+                             //       (in BFO-Mode frequency stays in not inverted display) 
+
+#define RDS_OFF            1 // Set to 0/1, if RDS should be disabled/enabled for FM at startup (RDS can be toggled ON/OFF in 
+                             // FM mode by shortpress on "Mode"-Button later)
+
+#define ENCODER_ENTER      1 // If defined != 0, and any command is selected, Shortpress on Encoder will end the currently selected 
+                             // command immediately (before default timeout of 4 seconds)
                                      
-#define ENCODER_SEARCH             1 // If defined != 0, shortpress on encoder will start search (in AM/FM-Mode) (overriden by ENCODER_ENTER
-                                     // if applicable)
+#define ENCODER_SEARCH     1 // If defined != 0, shortpress on encoder will start search (in AM/FM-Mode) (overriden by ENCODER_ENTER
+                             // if applicable)
                                      
-#define ENCODER_MUTEDELAY          2 // Controls how long the encoder button needs to be longpressed for Mute functionality:
-                                     //    -must be uint8_t (i. e. between 0 and 255)
-                                     //    -if Zero, Encoder longpresses will be ignored (treated same as shortpress)
-                                     //    -any other number 'x' specifies the timeout to be (roughly, in ms)
-                                     //       BUTTONTIME_LONGPRESS1 + x * BUTTONTIME_LONGPRESSREPEAT i. e.
-                                     //       320 + x * 48 if you did not change the default settings in "SimpleButton.h"
-                                     //    - with a setting of 2, this is roughly 400 ms
+#define ENCODER_MUTEDELAY  2 // Controls how long the encoder button needs to be longpressed for Mute functionality:
+                             //    -must be uint8_t (i. e. between 0 and 255)
+                             //    -if Zero, Encoder longpresses will be ignored (treated same as shortpress)
+                             //    -any other number 'x' specifies the timeout to be (roughly, in ms)
+                             //       BUTTONTIME_LONGPRESS1 + x * BUTTONTIME_LONGPRESSREPEAT i. e.
+                             //       320 + x * 48 if you did not change the default settings in "SimpleButton.h"
+                             //    - with a setting of 2, this is roughly 400 ms
 
-#define ENCODERMODE_DELAY         1  // Controls "EncoderMode":
-                                     //    -if enabled (>0), "EncoderMode" can be toggled by a longpress on button "Mode"
-                                     //    -in "EncoderMode" a short/longpress to Band+ and Band- will be the same as rotating the encoder
-                                     //       right/left
-                                     //    -must be uint8_t (i. e. between 0 and 255)
-                                     //    -to disable "EncoderMode", set this to Zero (0)
-                                     //    -any other number 'x' specifies (in ms), how long "Mode" must be pressed to toggle EncoderMode
-                                     //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
-                                     //    -with a setting of 2, this is roughly 100 ms 
-                                     //    -in EncoderMode:
-                                     //       - The encoder is not disabled, but simulated by buttons in addition
-                                     //       - Click or Longpress on AGC will be like pressing the Encoder
-                                     //       - Click or Longpress on "Band+"/"Band-" will be the same as rotating the encoder
-                                     //       - DoubleClick (instead of click) on "Band+" will start "Band-Change-Function" for 4 secs
-                                     //       - DoubleClick (instead of click) on "Band-" will start "SoftMute-Function" for 4 secs
-                                     //        -DoubleClick/Longclick on "AGC" allows for AGC-Settings
-                
+#define ENCODERMODE_DELAY  1 // Controls "EncoderSimulationMode" ("ESM"):
+                             //    -if enabled (>0), "EncoderSimulationMode" can be toggled by a longpress on button "Mode"
+                             //    -in "ESM" a short/longpress to Band+ and Band- will be the same as rotating the encoder
+                             //       right/left
+                             //    -must be uint8_t (i. e. between 0 and 255)
+                             //    -to disable "ESM", set this to Zero (0)
+                             //    -any other number 'x' specifies (in ms), how long "Mode" must be pressed to toggle EncoderMode
+                             //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
+                             //    -with a setting of 2, this is roughly 400 ms 
+                             //    -in "ESM":
+                             //       - The encoder is not disabled, but simulated by buttons in addition
+                             //       - Click or Longpress on AGC will be like pressing the Encoder
+                             //       - Click or Longpress on "Band+"/"Band-" will be the same as rotating the encoder
+                             //       - DoubleClick (instead of click) on "Band+" will start "Band-Change-Function" for 4 secs
+                             //       - DoubleClick (instead of click) on "Band-" will start "SoftMute-Function" for 4 secs
+                             //        -DoubleClick/Longclick on "AGC" allows for AGC-Settings
+
+#define ENCODERMODE_SLOWDOWN 0 // Controls how fast repeated longpress on "Mode+"/"Mode-" will be translated into Encoder rotations
+                               //   - must be uint_8, i. e. between 0 and 255
+                               //   - time between simulated encoder rotations is (x + 1) * BUTTONTIME_LONGPRESSREPEAT (defined in 
+                               //     "SimpleButton.h", defaults to roughly 50 ms)              
               
-#define BAND_DELAY                2  // Controls how long the BAND+/- buttons need to be longpressed for functionality:
-                                     //    -must be uint8_t (i. e. between 0 and 255)
-                                     //    -if Zero, longpresses will be ignored (will be same as shortpress)
-                                     //    -any other number 'x' specifies the timeout (in ms) between Band changes as
-                                     //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
-                                     //    -with a setting of 2, this is roughly not below 100 ms 
-                                     //      (however, since band switching/scree updating consumes some time, it is OK to leave at 1)
-                                     //     (if you did not change the default settings in "SimpleButton.h")
+#define BAND_DELAY        2  // Controls how long the BAND+/- buttons need to be longpressed for functionality:
+                             //    -must be uint8_t (i. e. between 0 and 255)
+                             //    -if Zero, longpresses will be ignored (will be same as shortpress)
+                             //    -any other number 'x' specifies the timeout (in ms) between Band changes as
+                             //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
+                             //    -with a setting of 2, this is roughly not below 100 ms 
+                             //      (however, since band switching/scree updating consumes some time, it is OK to leave at 1)
+                             //     (if you did not change the default settings in "SimpleButton.h")
 
-#define BAND_2CLICKENABLE         1  // If defined != 0:
-                                     //     - DOUBLE-CLICK on "Band+"-button will toggle bandIdx between first and last band
+#define BAND_2CLICKENABLE 1  // If defined != 0:
+                             //     - DOUBLE-CLICK on "Band+"-button will toggle bandIdx between first and last band
 
-#define BANDSWITCH1STEP_DELAY     1  // Controls "Next/Previous-Band" function:
-                                     //    - must be uint8_t (i. e. between 0 and 255)
-                                     //    - if set to "0", function is disabled.
-                                     //    - if function is enabled, a short click on Band+ or Band- followed by a immediate longpress ("long
-                                     //      doubleclick") will switch to Next or Previous Band respectively with wrapping around
-                                     //    -any other number 'x' specifies how long the longpress following the first click must be:
-                                     //       BUTTONTIME_LONGPRESS1 + x * BUTTONTIME_LONGPRESSREPEAT 
-                                     //    -with a setting of 1, this is roughly 400 ms 
-                                     //    -if enabled, function is anabled in both "EncoderMode" and "Normal Mode"
+#define BANDSWITCH1STEP_DELAY 1  // Controls "Next/Previous-Band" function:
+                                 //    - must be uint8_t (i. e. between 0 and 255)
+                                 //    - if set to "0", function is disabled.
+                                 //    - if function is enabled, a short click on Band+ or Band- followed by a immediate longpress ("long
+                                 //      doubleclick") will switch to Next or Previous Band respectively with wrapping around
+                                 //    -any other number 'x' specifies how long the longpress following the first click must be:
+                                 //       BUTTONTIME_LONGPRESS1 + x * BUTTONTIME_LONGPRESSREPEAT 
+                                 //    -with a setting of 1, this is roughly 400 ms 
+                                 //    -if enabled, function is anabled in both "EncoderMode" and "Normal Mode"
 
-#define SOFTMUTE_2CLICKENABLE   1     // If defined != 0:
-                                     //     - DOUBLE-CLICK on SoftMute("Band-")-button will toggle between min/max Softmute
+#define SOFTMUTE_2CLICKENABLE 1  // If defined != 0:
+                                 //     - DOUBLE-CLICK on SoftMute("Band-")-button will toggle between min/max Softmute
 
 
-#define VOLUME_DELAY              1  // Controls how long the Vol+/- buttons need to be longpressed for functionality:
-                                     //    -must be uint8_t (i. e. between 0 and 255)
-                                     //    -if Zero, longpresses will be ignored (will be same as shortpress)
-                                     //    -any other number 'x' specifies the timeout (in ms) between value changes as
-                                     //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
-                                     //    -with a setting of 1 (the best IMHO), this is roughly 50 ms 
-                                     //     (if you did not change the default settings in "SimpleButton.h")
+#define VOLUME_DELAY          1  // Controls how long the Vol+/- buttons need to be longpressed for functionality:
+                                 //    -must be uint8_t (i. e. between 0 and 255)
+                                 //    -if Zero, longpresses will be ignored (will be same as shortpress)
+                                 //    -any other number 'x' specifies the timeout (in ms) between value changes as
+                                 //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
+                                 //    -with a setting of 1 (the best IMHO), this is roughly 50 ms 
+                                 //     (if you did not change the default settings in "SimpleButton.h")
                                      
-#define AVC_2CLICKENABLE          1  // If defined != 0:
-                                     //     - DOUBLE-CLICK on AVC(==Vol-)-button will toggle betwin Min and Max AVC (12/90)
-                                     //     - DOUBLE-LONGCLICK AVC(==Vol-)-button will set AVC to 38
-
-#define STEP_DELAY                6  // Controls how long the Step button needs to be longpressed for functionality:
-                                     //    -must be uint8_t (i. e. between 0 and 255)
-                                     //    -if Zero, longpresses will be ignored (will be same as shortpress)
-                                     //    -any other number 'x' specifies the timeout (in ms) between value changes as
-                                     //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
-                                     //    -with a setting of 6, this is roughly 300 ms 
-                                     //     (if you did not change the default settings in "SimpleButton.h")
-
-#define STEP_2CLICKENABLE  1         // If defined != 0:
-                                     //     - DOUBLE-CLICK on step-button will toggle between min/max step
-                                     //     - DOUBLE-LONGCLICK on step-button will set default step
+#define AVC_2CLICKENABLE    1  // If defined != 0:
+                               //     - DOUBLE-CLICK on AVC(==Vol-)-button will toggle betwin Min, Default and Max AVC (12/38/90)
+                               //     - DOUBLE-LONGCLICK AVC(==Vol-)-button will "glide" between Min/Max AVC (direction changed at any press)
+                               //     - the number defines the timeout between value changes (in ms) as 
+                               //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
+                               //     - with a setting of 1 (the best IMHO), this is roughly 50 ms 
+                               //       (if you did not change the default settings in "SimpleButton.h")
 
 
-#define BANDWIDTH_DELAY           9  // Controls how long the Bandwidth button needs to be longpressed for functionality:
-                                     //    -must be uint8_t (i. e. between 0 and 255)
-                                     //    -if Zero, longpresses will be ignored (will be same as shortpress)
-                                     //    -any other number 'x' specifies the timeout (in ms) between value changes as
-                                     //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
-                                     //    -with a setting of 9, this is roughly 450 ms
-                                     //     (if you did not change the default settings in "SimpleButton.h")
+#define STEP_DELAY          6  // Controls how long the Step button needs to be longpressed for functionality:
+                               //    -must be uint8_t (i. e. between 0 and 255)
+                               //    -if Zero, longpresses will be ignored (will be same as shortpress)
+                               //    -any other number 'x' specifies the timeout (in ms) between value changes as
+                               //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
+                               //    -with a setting of 6, this is roughly 300 ms 
+                               //     (if you did not change the default settings in "SimpleButton.h")
+
+#define STEP_2CLICKENABLE   1  // If defined != 0:
+                               //     - DOUBLE-CLICK on step-button will toggle between min/max step
+                               //     - DOUBLE-LONGCLICK on step-button will set default step
+
+
+#define BANDWIDTH_DELAY     9  // Controls how long the Bandwidth button needs to be longpressed for functionality:
+                               //    -must be uint8_t (i. e. between 0 and 255)
+                               //    -if Zero, longpresses will be ignored (will be same as shortpress)
+                               //    -any other number 'x' specifies the timeout (in ms) between value changes as
+                               //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
+                               //    -with a setting of 9, this is roughly 450 ms
+                               //     (if you did not change the default settings in "SimpleButton.h")
                                      
-#define BANDWIDTH_2CLICKENABLE    1  // If defined != 0:
-                                     //     - DOUBLE-CLICK on bandwidth-button will toggle between min/max bandwidth idx
-                                     //     - DOUBLE-LONGCLICK on bw-button will set default bandwidth idx
+#define BANDWIDTH_2CLICKENABLE 1  // If defined != 0:
+                                  //     - DOUBLE-CLICK on bandwidth-button will toggle between min/max bandwidth idx
+                                  //     - DOUBLE-LONGCLICK on bw-button will set default bandwidth idx
                                      
-#define AGC_DELAY                 1  // Controls how long the AGC button needs to be longpressed for functionality:
-                                     //    -must be uint8_t (i. e. between 0 and 255)
-                                     //    -if Zero, longpresses will be ignored (will be same as shortpress)
-                                     //    -any other number 'x' specifies the timeout (in ms) between value changes as
-                                     //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
-                                     //    -with a setting of 1, this is roughly 50 ms 
-                                     //     (if you did not change the default settings in "SimpleButton.h")
+#define AGC_DELAY              1  // Controls how long the AGC button needs to be longpressed for functionality:
+                                  //    -must be uint8_t (i. e. between 0 and 255)
+                                  //    -if Zero, longpresses will be ignored (will be same as shortpress)
+                                  //    -any other number 'x' specifies the timeout (in ms) between value changes as
+                                  //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
+                                  //    -with a setting of 1, this is roughly 50 ms 
+                                  //     (if you did not change the default settings in "SimpleButton.h")
 
-#define AGC_2CLICKENABLE    1        // If defined != 0:
-                                     //     - DOUBLE-CLICK on AGC-button will toggle between Min and Max Attenuation (12/90)
-                                     //     - DOOUBLE_LONGCLICK on AGC-Button will set AGC
-
+#define AGC_2CLICKENABLE    1  // If defined != 0:
+                               //     - DOUBLE-CLICK on AGC-button will toggle between Min and Max Attenuation (12/90)
+                               //     - DOOUBLE_LONGCLICK on AGC-Button will set AGC
 
 
 
@@ -274,7 +295,6 @@ const uint16_t cmd_0x15_size = sizeof cmd_0x15;         // Array of lines where 
 //#define MIN_ELAPSED_TIME 100
 #define MIN_ELAPSED_RSSI_TIME 1000
 
-#define DEFAULT_VOLUME 45 // change it for your favorite sound volume
 
 
 #define FM 0
@@ -294,7 +314,8 @@ const uint8_t app_id = 44;
 const int eeprom_address = 0;
 uint16_t storeTime; // = millis();
 
-const char *bandModeDesc[] = {"FM ", "LSB", "USB", "AM "};
+//const char *bandModeDesc[] = {"FM ", "LSB", "USB", "AM "};
+const char bandModeDesc[] = {'F', 'L', 'U', 'A'};
 uint8_t currentMode = FM;
 uint8_t seekDirection = 1;
 
@@ -338,10 +359,12 @@ SimpleButton  btn_Step(STEP_BUTTON);
 SimpleButton  btn_Mode(MODE_SWITCH);
 
 void showEncoderMode(void);
+void doBandwidth(int8_t v, bool show = true);
+void doStep(int8_t v);
+void doAttenuation(int8_t v);
 
-//long elapsedRSSI = millis();
 uint16_t elapsedRSSI;
-//TODO long elapsedButton = millis();
+
 
 // Encoder control variables
 volatile int encoderCount = 0;
@@ -361,7 +384,7 @@ typedef struct
 } Bandwidth;
 
 
-#define NUM_SPLASHLINES (sizeof(splashlines) / sizeof(splashlines[0]))
+#define NUM_INTROLINES (sizeof(introlines) / sizeof(introlines[0]))
 
 #define BW_DEFAULT_SSB          4
 #define BW_DEFAULT_AM           4
@@ -474,11 +497,11 @@ Band band[] = {
   {SW_BAND_TYPE, 26200, 28000, 27500, 0, 4},  // CB band (11 meters)
   {SW_BAND_TYPE, 28000, 30000, 28400, 0, 4},  // 10 meters
   {FM_BAND_TYPE, 6400, 8400, 7000, 3, 0},     // FM from 64 to 84MHz; default 70MHz; default step frequency index is 3; default bandwidth index AUTO
-  {FM_BAND_TYPE, 8400, 10800, 10570, 3, 0}
+  {FM_BAND_TYPE, 8400, 10800, 10100, 3, 0}
 };
 
 const int lastBand = (sizeof band / sizeof(Band)) - 1;
-int bandIdx = 1;
+int bandIdx = DEFAULT_BAND;
 
 uint8_t rssi = 0;
 uint8_t stereo = 1;
@@ -516,7 +539,7 @@ void useBand(bool show = true)
     bwFlag = &bwIdxFM;
     bwMax = BW_MAX_FM;
     bwDefault = BW_DEFAULT_FM;
-    si4735.setFmBandwidth(bandwidthFM[bwIdxFM].idx);
+    //si4735.setFmBandwidth(bandwidthFM[bwIdxFM].idx);
   }
   else
   {
@@ -533,7 +556,14 @@ void useBand(bool show = true)
       bwIdxSSB = band[bandIdx].bandwidthIdx;
       bwIdxSSB = (bwIdxSSB > BW_MAX_SSB) ? BW_DEFAULT_SSB : bwIdxSSB;
       //Serial.print("useBand() bwIdxSSB= ");Serial.println(bwIdxSSB);
+      /*
       si4735.setSSBAudioBandwidth(bandwidthSSB[bwIdxSSB].idx);
+      // If audio bandwidth selected is about 2 kHz or below, it is recommended to set Sideband Cutoff Filter to 0.
+      if (bandwidthSSB[bwIdxSSB].idx == 0 || bandwidthSSB[bwIdxSSB].idx == 4 || bandwidthSSB[bwIdxSSB].idx == 5)
+        si4735.setSBBSidebandCutoffFilter(0);
+      else
+        si4735.setSBBSidebandCutoffFilter(1);
+      */
       si4735.setSSBBfo(currentBFO);
       bwFlag = &bwIdxSSB;
       bwMax = BW_MAX_SSB;
@@ -547,7 +577,7 @@ void useBand(bool show = true)
       si4735.setAmSoftMuteMaxAttenuation(smIdx); // // Disable Soft Mute for AM
       bwIdxAM = band[bandIdx].bandwidthIdx;
       bwIdxAM = (bwIdxAM > BW_MAX_AM) ? BW_DEFAULT_AM : bwIdxAM;
-      si4735.setBandwidth(bandwidthAM[bwIdxAM].idx, 1);
+      //si4735.setBandwidth(bandwidthAM[bwIdxAM].idx, 1);
       bfoOn = false;
       bwFlag = &bwIdxAM;
       bwMax = BW_MAX_AM;
@@ -558,8 +588,9 @@ void useBand(bool show = true)
   }
   //delay(100);
   //oled.clear();
-  currentFrequency = band[bandIdx].currentFreq;
+  previousFrequency = currentFrequency = band[bandIdx].currentFreq;
   idxStep = band[bandIdx].currentStepIdx;
+  doBandwidth(0, false);
   if (show)
   {
     showStatus();
@@ -601,7 +632,7 @@ void loadSSB(bool show = true)
 /**
    reads the last receiver status from eeprom.
 */
-void readAllReceiverInformation(bool show = true)
+void readAllReceiverInformation()
 {
   int addr_offset;
   int bwIdx;
@@ -620,131 +651,141 @@ void readAllReceiverInformation(bool show = true)
     band[i].bandwidthIdx = EEPROM.read(addr_offset++);
   }
 
-  previousFrequency = currentFrequency = band[bandIdx].currentFreq;
+  //previousFrequency = currentFrequency = band[bandIdx].currentFreq;
   idxStep = tabStep[band[bandIdx].currentStepIdx];
   bwIdx = band[bandIdx].bandwidthIdx;
 
   if (currentMode == LSB || currentMode == USB)
   {
-    loadSSB(show);
+    loadSSB(false);
+    /*
     si4735.setSSBAudioBandwidth(bandwidthSSB[bwIdxSSB].idx);
     // If audio bandwidth selected is about 2 kHz or below, it is recommended to set Sideband Cutoff Filter to 0.
     if (bandwidthSSB[bwIdxSSB].idx == 0 || bandwidthSSB[bwIdxSSB].idx == 4 || bandwidthSSB[bwIdxSSB].idx == 5)
       si4735.setSBBSidebandCutoffFilter(0);
     else
       si4735.setSBBSidebandCutoffFilter(1);
+    */
   }
   else if (currentMode == AM)
   {
     bwIdxAM = (bwIdx > BW_MAX_AM) ? BW_DEFAULT_AM : bwIdx;
-    si4735.setBandwidth(bandwidthAM[bwIdxAM].idx, 1);
+    //si4735.setBandwidth(bandwidthAM[bwIdxAM].idx, 1);
   }
   else
   {
     bwIdxFM = (bwIdx > BW_MAX_FM) ? BW_DEFAULT_FM : bwIdx;
-    si4735.setFmBandwidth(bandwidthFM[bwIdxFM].idx);
+    //si4735.setFmBandwidth(bandwidthFM[bwIdxFM].idx);
   }
 }
 
 
-bool doSplash()
+void doIntro(bool doClrEEPROM)
 {
-#define SPLASH_SHOWLINE   1
-#define SPLASH_WAITLINE   2
-#define SPLASH_LINESDONE  3
-//#define SPLASH_EMPTY      4
+#define INTRO_SHOWLINE   1
+#define INTRO_WAITLINE   2
+#define INTRO_LINESDONE  3
 
-#define SPLASH_CLREEPROM  5
-#define SPLASH_WAIT       6
-#define SPLASH_BEFOREDONE 7
-#define SPLASH_DONE       8
-#define SPLASH_RELEASE    9
+#define INTRO_CLREEPROMSTART 4
+#define INTRO_CLREEPROM      5
+#define INTRO_WAIT           6
+#define INTRO_BEFOREDONE     7
+#define INTRO_DONE           8
+#define INTRO_RELEASE        9
 
-bool ret = true;
-static uint8_t splashState = 0;
-static uint8_t splashLine = 0;
-uint16_t timeNow = millis();
-static uint16_t stateTime;
-  if (SPLASH_DONE == splashState)
-    return false;
-  if (!splashState)
+static uint8_t introState = 0;
+uint8_t introLine = 0;
+uint16_t stateTime;
+  if (INTRO_DONE == introState)
+    return;
+  while (introState != INTRO_DONE) 
   {
-      stateTime = timeNow;
-      if (LOW == digitalRead(ENCODER_BUTTON))
-      {
-        splashState = SPLASH_CLREEPROM;
-      }
-#if ((0 == SPLASH_LINEDELAY) && (0 == SPLASH_ENDDELAY))
-      else
-        splashState = SPLASH_BEFOREDONE;
-#else
-      else if (0 == NUM_SPLASHLINES)
-      {
-        splashState = SPLASH_BEFOREDONE;
-      }
-      else
-        splashState = SPLASH_SHOWLINE;
-#endif
-  }
-  else 
-  {
+    timeNow = millis();
     uint8_t event = btn_Encoder.checkEvent();
-    if (splashState < SPLASH_CLREEPROM)
+    if (introState && (introState < INTRO_CLREEPROM))
     { 
+      if (BUTTONEVENT_FIRSTLONGPRESS == event)
+      {
+#if (0 < INTRO_LONGPRESSDELAY)
+        if (introState < INTRO_CLREEPROMSTART)
+        {
+          introState = INTRO_CLREEPROMSTART;
+          stateTime = timeNow;
+        }
+        else
+#endif
+          event = BUTTONEVENT_SHORTPRESS;
+      }      
       if (BUTTONEVENT_SHORTPRESS == event)
       {
-        splashState = SPLASH_BEFOREDONE;
-      }
-      else if ((BUTTONEVENT_FIRSTLONGPRESS == event) && (splashState < SPLASH_CLREEPROM))
-      {
-        splashState = SPLASH_CLREEPROM;
-        stateTime = timeNow;
+        introState = INTRO_BEFOREDONE;
       }
     }  
-    switch (splashState) {
-      case SPLASH_SHOWLINE:
-        //oled.setCursor(splashlines[splashLine].x, splashLine);
-        oled.setCursor(63 - strlen(splashlines[splashLine]) / 2 * 6, splashLine);
-        oled.print(splashlines[splashLine++]);
+    switch (introState) {
+      case 0:
         stateTime = timeNow;
-        if ((NUM_SPLASHLINES > splashLine) && (splashLine < 4))
+        if (LOW == digitalRead(ENCODER_BUTTON) || doClrEEPROM)
         {
-          splashState = SPLASH_WAITLINE;
+          introState = INTRO_CLREEPROM;
+        }
+        else
+#if (((0 == INTRO_LINEDELAY) && (0 == INTRO_ENDDELAY)) || (0 == INTRO_BEFOREDONE))
+          introState = INTRO_BEFOREDONE;
+#else
+          introState = INTRO_SHOWLINE;
+#endif
+        break;
+      case INTRO_SHOWLINE:
+        //oled.setCursor(introlines[introLine].x, introLine);
+        stateTime = timeNow;
+        if ((NUM_INTROLINES > introLine) && (introLine < 4))
+        {
+          oled.setCursor(63 - strlen(introlines[introLine]) / 2 * 6, introLine);
+          oled.print(introlines[introLine++]);
+          introState = INTRO_WAITLINE;
         }
         else
         {
-          splashState = SPLASH_LINESDONE;
+          introState = INTRO_LINESDONE;
         }
         break;
-      case SPLASH_WAITLINE:
-        if (timeNow - stateTime > SPLASH_LINEDELAY)
-          splashState = SPLASH_SHOWLINE;
+      case INTRO_WAITLINE:
+        if (timeNow - stateTime > INTRO_LINEDELAY)
+          introState = INTRO_SHOWLINE;
         break;
-      case SPLASH_LINESDONE:
-        if (timeNow - stateTime > SPLASH_ENDDELAY)
-          splashState = SPLASH_BEFOREDONE;
+      case INTRO_LINESDONE:
+        if (timeNow - stateTime > INTRO_ENDDELAY)
+          introState = INTRO_BEFOREDONE;
         break;
-      case SPLASH_CLREEPROM:
+#if (0 < INTRO_LONGPRESSDELAY)
+      case INTRO_CLREEPROMSTART:
+          if (BUTTON_IDLE == event)
+            introState = INTRO_SHOWLINE;
+          else if (timeNow - stateTime > ((uint16_t)INTRO_LONGPRESSDELAY * (uint16_t)500))
+            introState = INTRO_CLREEPROM;
+        break;
+#endif
+      case INTRO_CLREEPROM:
           oled.clear();
           EEPROM.write(eeprom_address, 0);
           oled.setCursor(0, 0);
           oled.print("EEPROM RESETED");
-          splashState = SPLASH_WAIT;
+          introState = INTRO_WAIT;
           stateTime = timeNow;
         break;
-      case SPLASH_WAIT:
-          if (timeNow - stateTime > 2000)
+      case INTRO_WAIT:
+          if (timeNow - stateTime > INTRO_CLREEPROMDELAY)
             if (HIGH == digitalRead(ENCODER_BUTTON))
-              splashState = SPLASH_RELEASE;
+              introState = INTRO_RELEASE;
         break;  
-      case SPLASH_RELEASE:
+      case INTRO_RELEASE:
           if (btn_Encoder.checkEvent() == BUTTON_IDLE)
           {
-            splashState = SPLASH_BEFOREDONE;
+            introState = INTRO_BEFOREDONE;
           }
         break;  
-      case SPLASH_BEFOREDONE:
-#if (0 == SPLASH_SILENT)
+      case INTRO_BEFOREDONE:
+#if (0 == INTRO_SILENT)
         showStatus();
         if (FM == currentMode)
           cleanBfoRdsInfo();
@@ -757,31 +798,39 @@ static uint16_t stateTime;
         // Checking the EEPROM content
         if (EEPROM.read(eeprom_address) == app_id)
         {
-          readAllReceiverInformation(false);
+          readAllReceiverInformation();
         }
 
         si4735.setVolume(volume);
         useBand();
-        if (FM == currentMode)
-          cleanBfoRdsInfo();
+        //if (FM == currentMode)
+        //  cleanBfoRdsInfo();
 #endif
-        splashState = SPLASH_DONE;
+        if (BUTTON_IDLE != event)
+        {
+          while (BUTTON_IDLE != btn_Encoder.checkEvent())
+            timeNow = millis();
+          delay(200);
+        }
+        introState = INTRO_DONE;
         break;
       default:
-        splashState = SPLASH_DONE;        
-        ret = false;
+        introState = INTRO_DONE;        
         break;
     }
   }
-  return ret;
 }
 
 void setup()
 {
+  bool clearEEPROM = (LOW == digitalRead(ENCODER_BUTTON));
 
   // Encoder pins
   pinMode(ENCODER_PIN_A, INPUT_PULLUP);
   pinMode(ENCODER_PIN_B, INPUT_PULLUP);
+  // Encoder interrupt
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), rotaryEncoder, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), rotaryEncoder, CHANGE);
   oled.begin();
   oled.clear();
   oled.on();
@@ -804,14 +853,13 @@ void setup()
 #endif
 
 
-  // Encoder interrupt
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), rotaryEncoder, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), rotaryEncoder, CHANGE);
 
-
+  
+  if (clearEEPROM)
+    EEPROM.write(eeprom_address, 0);
 
   // Set up the radio for the current band (see index table variable bandIdx )
-#if (0 == SPLASH_SILENT)
+#if (0 == INTRO_SILENT)
   si4735.getDeviceI2CAddress(RESET_PIN); // Looks for the I2C bus address and set it.  Returns 0 if error
 
   si4735.setup(RESET_PIN, MW_BAND_TYPE); //
@@ -820,7 +868,7 @@ void setup()
   // Checking the EEPROM content
   if (EEPROM.read(eeprom_address) == app_id)
   {
-    readAllReceiverInformation(false);
+    readAllReceiverInformation();
   }
 
   
@@ -828,11 +876,12 @@ void setup()
   useBand(false);
 #endif
   // Splash - Change orit for your introduction text or remove the splash code.
-  while (doSplash())
-    ;
+
+  doIntro(clearEEPROM);
+    
   // end Splash
 
-  currentFrequency = previousFrequency = si4735.getFrequency();
+  //previousFrequency = currentFrequency;// =  si4735.getFrequency();
 
 }
 
@@ -914,17 +963,44 @@ uint8_t volumeEvent(uint8_t event, uint8_t pin) {
   if (AVC_BUTTON == pin)
     if (BUTTONEVENT_ISDOUBLE(event))
     {
-      if ((BUTTONEVENT_2CLICK == event) || (BUTTONEVENT_2FIRSTLONGPRESS == event))
+      static uint8_t count = 0;
+      static int8_t direction = 2;
+      if (FM != currentMode)
       {
-        if (FM != currentMode)
+        if ((BUTTONEVENT_2CLICK == event) || (BUTTONEVENT_2FIRSTLONGPRESS == event))
         {
           if (cmdSoftMute || cmdAgcAtt)
           {
             disableCommand(NULL, false, NULL);
             cmdAvc = true;
           }
-          avcIdx = (BUTTONEVENT_2CLICK == event)?(90 == avcIdx?12:90):38;
-          doAvc(0);
+          if (BUTTONEVENT_2CLICK == event)
+          {
+            avcIdx = (90 == avcIdx)?12:(38 > avcIdx?38:90);
+            doAvc(0);
+          }
+          else 
+          {
+            count = AVC_2CLICKENABLE;
+            if (90 == avcIdx)
+              direction = -2;
+            else if (12 == avcIdx)
+              direction = 2;
+            else
+              direction = -1 * direction;
+          }
+        }
+        else if (BUTTONEVENT_2LONGPRESS == event)
+          count++;
+        if (AVC_2CLICKENABLE == count)
+        {
+          uint8_t x = avcIdx + direction;
+          count = 0;
+          if ((x >= 12) && (x <= 90))
+          {
+            avcIdx = x;
+            doAvc(0);
+          }
         }
       }
       event = BUTTON_PRESSED;
@@ -1035,27 +1111,43 @@ uint8_t encoderEvent(uint8_t event, uint8_t pin) {
 
 uint8_t modeEvent(uint8_t event, uint8_t pin) {
 #ifdef DEBUG
-  buttonEvent(event, pin);
+  buttonEvent(event, pin);  
 #endif
+
+#if (0 != ENCODERMODE_DELAY)
+static uint8_t count = 0;
+#endif
+
+
   if (BUTTONEVENT_FIRSTLONGPRESS == event)
   {
 #if (0 != ENCODERMODE_DELAY)
-    encoderMode = !encoderMode;
-    showEncoderMode();
+    count = 0;
 #else
     event = BUTTONEVENT_SHORTPRESS;
 #endif
   }
+#if (0 != ENCODERMODE_DELAY)
+  else if (BUTTONEVENT_LONGPRESS == event)
+  {
+    if (count < ENCODERMODE_DELAY)
+      if (++count == ENCODERMODE_DELAY)
+      {
+        encoderMode = !encoderMode;
+        showEncoderMode();
+      }
+  }
+#endif
   
   return event;
 }
 
-void applyParameterChange(uint8_t *parameter, int8_t direction, uint8_t max, void (*changeFunction)(int8_t dir))
+void applyParameterChange(uint8_t *parameter, int8_t direction, uint8_t max, void (*changeFunction)(int8_t dir, bool show), bool show = true)
 {
   if (((1 == direction) && (*parameter < max)) || ((1 != direction) && (*parameter > 0)) || (0 == direction))
   {
     //Serial.print("Do change. D:");Serial.print(direction);Serial.print(" P:");Serial.print(*parameter);Serial.print(" M:");Serial.println(max);
-    changeFunction(direction);
+    changeFunction(direction, show);
   }
 }
 
@@ -1118,9 +1210,10 @@ uint8_t stepEvent(uint8_t event, uint8_t pin) {
     if (BUTTONEVENT_2CLICK == event)
     {
       idxStep = (idxStep == lastStep?0:lastStep);
-      applyParameterChange(&idxStep, 0, lastStep, doStep);
+      //applyParameterChange(&idxStep, 0, lastStep, doStep);
+      doStep(0);
+      event = BUTTON_PRESSED;
     }
-    event = BUTTON_PRESSED;
   }
 #endif
   event = BUTTONEVENT_UNDO_DOUBLE(event);
@@ -1206,7 +1299,15 @@ uint8_t agcEvent(uint8_t event, uint8_t pin) {
             direction = -1;
         }
         if (0 == count++)
-          applyParameterChange(&agcIdx, direction, 37, doAttenuation);
+        {
+          //applyParameterChange(&agcIdx, direction, 37, doAttenuation);
+          int8_t x = agcIdx + direction;
+          if ((x >= 0) && (x <= 37))
+          {
+            agcIdx = x;
+            doAttenuation(0);
+          }
+        }
         count = count % AGC_DELAY;
       }
     }
@@ -1257,16 +1358,22 @@ bool direction = (BAND_BUTTON == pin);
   {
     if (BUTTONEVENT_ISDOUBLE(event))
       if (BUTTONEVENT_ISLONGPRESS(event))
+      {
         event = BUTTONEVENT_UNDO_DOUBLE(event);
+      }
     if (!BUTTONEVENT_ISDOUBLE(event))
     {
       if (!BUTTONEVENT_ISLONGPRESS(event) || (BUTTONEVENT_FIRSTLONGPRESS == event))
         count = 0;
       if (BUTTONEVENT_LONGPRESSDONE != event)
       {
+#if (0 != ENCODERMODE_SLOWDOWN)
         if (!count++)
           encoderCount = direction?1:-1;
-        count = count % ENCODERMODE_DELAY;
+        count = count % ENCODERMODE_SLOWDOWN;
+#else
+        encoderCount = direction?1:-1;
+#endif       
       }
       event = BUTTON_IDLE;
     }
@@ -1503,11 +1610,24 @@ bool checkStopSeeking()
 void showBandDesc()
 {
   char *bandMode;
+  char buf[4];
   if (currentFrequency < 520)
     bandMode = (char *)"LW  ";
   else
-    bandMode = (char *)bandModeDesc[currentMode];
-
+  {
+    bandMode = (char *)&buf;
+    buf[0] = bandModeDesc[currentMode];
+    if (buf[0] <= 'F')
+    {
+      buf[1] = 'M';buf[2] = ' ';
+    }
+    else
+    {
+      buf[1] = 'S';buf[2] = 'B';
+    }
+    buf[3] = 0;
+    //bandMode = (char *)bandModeDesc[currentMode];
+  }
   oled.setCursor(0, 0);
   oledSpace(4);
   //oled.print("    ");
@@ -1523,36 +1643,34 @@ void showBandDesc()
 void showRSSI(bool force = false)
 {  
 static int8_t lastBars = -1;
-  int8_t bars = (rssi / 20.0) + 1;
+  int8_t bars = (rssi / 16);
+  //Serial.print("RSSI:");Serial.println(rssi);
+  bars = (bars>4)?4:bars;
   if (currentMode == FM)
   {
     oled.setCursor(18, 0);
-    oledSpace(2);
-    //oled.print("  ");
-    oled.setCursor(18, 0);
-    oled.invertOutput(true);
     if (si4735.getCurrentPilot())
     {
       oled.invertOutput(true);
       oled.print("s");
+      oled.invertOutput(false);
     }
-    oled.invertOutput(false);
+    else
+      oledSpace(2);
   }
   
-  if (!force)
-    force = bars != lastBars;
-  if (!force)
-    return;
-  lastBars = bars;
-  oled.setCursor(90, 3);
-  oledSpace(6);
+  if (force || (bars != lastBars))
+  {
+    lastBars = bars;
+    oled.setCursor(90, 3);
+    oledSpace(6);
   //oled.print("      ");
-  oled.setCursor(90, 3);
-  oled.print(".");
-  for (int i = 0; i < bars; i++)
-    oled.print('_');
-  oled.print('|');
-
+    oled.setCursor(90, 3);
+    oled.print(".");
+    for (int i = 0; i < bars; i++)
+      oled.print('_');
+    oled.print('|');
+  }
 }
 
 /*
@@ -1629,20 +1747,15 @@ void showBandwidth()
     if (currentMode == LSB || currentMode == USB)
     {
       convertToChar(bandwidthSSB[bwIdxSSB].desc, buf,2, 1, '.');
-    //Serial.print("BW SSB: ");Serial.print(bw);Serial.print(", Idx:");Serial.println(bwIdxSSB);
       showBFO();
     }
     else
     {
-      //bw = (char *)bandwidthSSB[bwIdxSSB].desc;
       convertToChar(bandwidthAM[bwIdxAM].desc, buf,2, 1, '.');
-      //bw = (char *)bandwidthAM[bwIdxAM].desc;
     }
     
   }
   oled.setCursor(0, 3);
-//  oledSpace(10);
-  //oled.print("          ");
   oled.setCursor(0, 3);
   oled.invertOutput(cmdBw);
   oled.print("BW: ");
@@ -1729,24 +1842,19 @@ void showBFO()
 {
   oled.setCursor(0, 2);
   oledSpace(14);
-  //oled.print("          ");
   oled.setCursor(0, 2);
 #if (0 == DISPLAY_OLDSTYLE)  
   oled.invertOutput(bfoOn  && !cmdAnyOn);
 #endif
   oled.print("BFO: ");
   oled.print(currentBFO);
-  //if (!encoderMode || ((currentBFO < 1000) && (currentBFO > -100)))
   oled.print("Hz");
 #if (0 != DISPLAY_OLDSTYLE)  
   oled.invertOutput(false);
-  //showFrequency();  
 #endif
 
   oled.invertOutput(cmdStep);
   oled.setCursor(93, 2);
-  //oledSpace(2);
-  //oled.print("    ");
   oled.setCursor(93, 2);
   oled.print("S:");
 #if (0 != DISPLAY_OLDSTYLE)
@@ -1763,7 +1871,6 @@ void showEncoderMode()
   oled.setCursor(93, 0);
   oled.invertOutput(encoderMode);
   oled.print(currentMode == FM?'M':'k');
-  //Serial.print("ShowUnit. FM?=");Serial.println(currentMode == FM);
   oled.print("Hz");
   oled.invertOutput(false);
 }
@@ -2019,7 +2126,7 @@ void doAvc(int8_t v)
 /**
    Switches the bandwidth based on encoder rotation
 */
-void doBandwidth(int8_t v)
+void doBandwidth(int8_t v, bool show = true)
 {
   if (v != 0)
   {
@@ -2050,7 +2157,8 @@ void doBandwidth(int8_t v)
     else
       si4735.setSBBSidebandCutoffFilter(1);
   }
-  showBandwidth();
+  if (show)
+    showBandwidth();
 }
 
 /**
@@ -2109,6 +2217,17 @@ void doEncoderAction()
 {
   if (encoderCount != 0)
   {
+#if defined(DEBUG)
+    Serial.print("Encoder turned ");
+    if (encoderCount > 0)
+      Serial.println("right");
+    else
+      Serial.println("left");
+#if defined(DEBUG_BUTTONS_ONLY)
+    encoderCount = 0;
+    return;
+#endif
+#endif
     if (cmdVolume)
       doVolume(encoderCount);
     else if (cmdAgcAtt)
@@ -2164,6 +2283,7 @@ void loop()
 uint8_t x;
   timeNow = millis();                   // looses 16 bits, but we are just fine with the lower word...
 #if defined(DEBUG) && defined(DEBUG_BUTTONS_ONLY)
+  doEncoderAction();
   btn_BandUp.checkEvent(buttonEvent) ;
   btn_BandDn.checkEvent(buttonEvent) ;
   btn_VolumeUp.checkEvent(buttonEvent);
@@ -2246,7 +2366,7 @@ uint8_t x;
         {
           currentMode = USB;
         }
-        else if (currentMode == USB)
+        else// if (currentMode == USB)
         {
           currentMode = AM;
           ssbLoaded = false;

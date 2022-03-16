@@ -24,91 +24,101 @@ Features
 * After about 4 seconds, all command buttons are all disabled and the encoder control goes back to the frequency
 
 NEW:
-* Button presses can now be distinguished between shortpress and longpress
-* If shortpressed, the selected function can be controlled by rotating the encoder as usual
-* If longpressed, some functions can be controlled without using the encoder:
-    - Longpress (and hold) on Vol+/Vol- will increase/decrease the volume (at fast pace)
-    - Lomgpress (and hold) on Band+/Band- will switch up/down through the available bands
-    - Longpress on Encoder can Mute/Unmute the radio
+* Some device come with an encoder that breaks easily. If that happens, the device can now be fully operated by using buttons only.
+* Buttons can now react on the follwing events:
+  - Shortclick (or just CLICK) occurs if a button has been shortpressed.
+  - A Doubleclick (or 2CLICK) is two shortclicks in very quick succession.
+  - a Longpress (or LP) is a long press and hold of a button.
+  - a Double-Longpress (or 2LP) is a short click followed by a longpress in very quick succession.
+  - LP/2LP-events have a continuous functionality attached normally (like constantly increase the volume as long as "Vol+" is pressed.
+    There are functions that react only once during a longpress episode (like LP on encoder to Mute/Unmute the radio).
+    To denote this, such events will be labelled as LP(once) or 2LP(once)
+* The behaviour described below is the default behaviour, that might be changed to your liking (see README TBD)
+
 
 COMMANDS
 
-1) DEALING WITH AUDIO VOLUME
+- assigned to "BAND+":
+  - CLICK: toggle command to change the Band by rotating the encoder
+  - 2CLICK: toggle between first and last band defined
+  - LP: Switch to next band as long as button is pressed, stop at the last defined band.
+  - 2LP(once): Switch (just once) to next band (again no wrap around)
 
-Press the __"VOL+"__ push button and rotate the  encoder. Press the button again to disable the command or wait for 4s;
+- assigned to "BAND-":
+  - CLICK: toggle command to change SoftMute by rotating the encoder (ignored in FM-Mode)
+  - 2CLICK: toggle between min and max value of SoftMute (ignored in FM-Mode)
+  - LP: Switch to previous band as long as button is pressed, stop at the first band defined.
+  - 2LP(once): Switch (just once) to previous band (again no wrap around)
 
-or (NEW)
+- assigned to "VOL+":
+  - CLICK/2CLICK: toggle command to change the Volume by rotating the encoder
+  - LP/2LP: continuously increase Volume up to max (63)
 
-Longpress (and hold) __"VOL+"__ or __"VOL-"__ to smoothly increase/decrease the volume.
-* This function must be defined at compile-time, can be disabled altogether or time for longpress 
-  might be specified: search for "#define VOLUME_DELAY" in the main *.ino-file.
-Longpress __ENCODER__ to Mute/Unmute the radio.
-* This function must be defined at compile-time, can be disabled altogether or time for longpress 
-  might be specified: search for "#define ENCODER_MUTEDELAY" in the main *.ino-file.
-* Mute is shown as Volume==0 on display. However, mute is different from switching the volume to 0 by Encoder: 
-  If any API is used to change the volume the change will not start from 0 but from the volume level stored before
-  the last __Mute__
+- assigned to "VOL-"
+  - CLICK: toggle command to change AVC by rotating the encoder (ignored in FM-Mode)
+  - 2CLICK: toggle AVC value between min (12), average (38) and max (90) (not in FM-mode)
+  - LP: continuously decrease Volume up to min (0)
+  - 2LP: continuously increase/decrease AVC between 12/90 (direction changes with every 2LP) (not in FM-mode)  
 
-2) SELECTING THE BAND
+- assigned to "STEP" (not in FM-Mode):
+  - CLICK: toggle command to change Step by rotating the encoder
+  - 2CLICK: toggle Step-Value between Min/Max-step defined (for specific AM/SSB band)
+  - LP/2LP: continuously increase/decrease Step between min/max (direction changes with every press)
 
-Press the __"BAND+"__ push button and rotate the  encoder. Press the button again to disable the command or wait for 4s;
+- assigned to "BW":
+  - CLICK: toggle command to change Bandwidth by rotating the encoder
+  - 2CLICK: toggle Bandwidth between min/max defined for the current band
+  - LP: continuously increase/decrease Bandwidth between min/max (direction changes with every press)
+  - 2LP(once): set the default Bandwidth defined for the current band.
 
-or (NEW)
-* This function must be defined at compile-time, can be disabled altogether or time for longpress 
-  might be specified: search for "#define BAND_DELAY" in the main *.ino-file.
+- assigned to "AGC" (not in FM-Mode): 
+  - CLICK: toggle command to change AGC/Attenuation by rotating the encoder
+  - 2CLICK: toggle Attenuation between min (0) and max (36)
+  - LP: continuously increase/decrease AGC/Attenuation between AGC/0..36 (direction changes with every press)
+  - 2LP(once): set AGC
 
-Longpress (and hold) __"Band+"__ or __"Band-"__ to switch between bands.
+- assigned to "MODE":
+  - CLICK/2CLICK: in FM-Mode: toggle RDS off/on, else toggle between AM/LSB/USB-mode
+  - LP(once)/2LP(once): toggle "Encoder-Simulation-Mode" (see below)
 
-3) DEALING WITH AGC AND ATTENUATION
+- assigned to "Rotary-Encoder-Button" (at normal play):
+  - 2CLICK/2LP will be ignored
+  - CLICK: if any command is selected (to be changed by rotary encoder), cancel that command immediately (not waiting for timeout)
+           else if in AM/FM-Mode: start search
+           else if in SSB-Mode: toggle rotary encoder between BFO/VFO-setting
+  - LP(once): toggle Mute (if muted, "XX" will be displayed as current volume)
 
-Press the AGC push button and rotate the  encoder. Press the button again to disable the command or wait for 4s;
+- assigned to "Rotary-Encoder-Button" (at startup):
+  - if pressed when powered on, EEPROM will be cleared
+  - CLICK: if intro is still running will cancel the intro screen direction
+  - LP: if intro is still running will also clear the EEPROM 
+  - 2CLICK/2LP will be ignored
 
-or (NEW)
+Encoder-Simulation-Mode (ESM)
 
-Longpress (and hold) the AGC button. The attenuation setting will change stepwise. The setting will not wrap around
-but stay at either the upper or lower end of the possible range. 
-* This function must be defined at compile-time, can be disabled altogether or time for longpress 
-  might be specified: search for "#define AGC_DELAY" in the main *.ino-file.
+* Some devices come with a rotary encoder that is broken easily. This mode is intended to simulate the encoder by buttons only.
+* If "Encoder-Simulation-Mode" is active, the display of the frequency unit (kHz/MHz) at the upper right will be inverted.
+* In Active encoder mode (full button event change description is below):
+  - CLICK/LP on "BAND+" will be the same as rotating the encoder right 
+  - CLICK/LP on "BAND-" will be the same as rotating the encoder left
+  - CLICK/LP on "AGC" will be the same as CLICK/LP on the encoder Button
+* Note that the encoder itself will stay fully operational in this mode
 
-4) DEALING WITH SOFTMUTE AND ATTENUATION
+- behaviour of button "BAND+" in ESM:
+  - CLICK: identical to one turn right of the encoder
+  - 2CLICK: toggle command to change the Band by rotating the encoder (like CLICK in "normal" mode)
+  - LP: identical to continously turning the encoder right
+  - 2LP(once): Switch (just once) to next band (as in "normal mode")
 
-Press the push button labeled __"BAND-"__ and rotate the  encoder. Press the button again to disable the command or wait for 4s. This button was used to control the band switch. Due to the new interface, this button has lost its original function.
+- behaviour of button "BAND-" in ESM:
+  - CLICK: identical to one turn left of the encoder
+  - 2CLICK: toggle command to change SoftMute by rotating the encoder (like CLICK in "normal" mode)
+  - LP: identical to continously turning the encoder left
+  - 2LP(once): Switch (just once) to previous band (as in "normal mode")
 
-5) SELECTING BANDWIDTH
+- behaviour of button "AGC" in ESM:
+  - CLICK: identical to CLICK on the encoder button
+  - 2CLICK: toggle command to change AGC/Att by rotating the encoder (like "normal" CLICK, not in FM-Mode)
+  - LP: identical to LP on the encoder button
+  - 2LP: Change AGC/Att as long as pressed (like "normal" LP, not in FM-Mode)
 
-Press the BW  push button and rotate the  encoder. Press the button again to disable the command or wait for 4s;
-
-or (NEW)
-
-Longpress (and hold) the BW push button. The bandwidth will change stepwise. The bandwidth setting will not wrap around but
-stay at either the upper or lower end of the supported range (defined by current mode). 
-* This function must be defined at compile-time, can be disabled altogether or time for longpress 
-  might be specified: search for "#define BANDWIDTH_DELAY" in the main *.ino-file.
-
-6) SWITCHING THE STEP FREQUENCY
-
-Press the STEP push button and rotate the  encoder. Press the button again to disable the command or wait for 4s;
-
-or (NEW)
-
-Longpress (and hold) the STEP push button. The step setting will change stepwise. The step setting will not wrap 
-around but stay at either the upper or lower end of the supported range (between 1 and 100 kHz). 
-* This function must be defined at compile-time, can be disabled altogether or time for longpress 
-  might be specified: search for "#define STEP_DELAY" in the main *.ino-file.
-
-7) SWITCHING THE MODE AM, LSB AND USB
-
-On AM mode press MODE push button to switch to LSB mode; press MODE push button again to switch to USB mode; and finally press MODE push button again to switch AM mode.
-
-8) VFO/BFO Switch
-
-To control the VFO and BFO, you can use the encoder push button on SSB mode. The display will show you if you are using VFO or BFO.
-
-9) SEEK COMMAND
-
-On FM or AM modes press the encoder push button.
-The direction of the seek up or seek down will  depend on the last rotating movement of the encoder, clockwise and counterclockwise respectively.
-
-10) RESET EEPROM
-
-Turn your receiver on with the encoder push button pressed.
