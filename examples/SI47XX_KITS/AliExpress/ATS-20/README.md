@@ -1,0 +1,144 @@
+# General Info
+
+**This example is intended to be merged to https://github.com/pu2clr/SI4735/tree/master/examples/SI47XX_KITS/AliExpress/SI473X_ALL_IN_ONE_OLED_RDS_CHINESE_V8. This fork exists just for preparing the pull request. The work to be done is to finish this README and to fix some errors if found on the go...**
+
+This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47XX_KITS/AliExpress/SI473X_ALL_IN_ONE_OLED_RDS_CHINESE_V7 as starting point. The functionality has not changed in general but has some rework on the user-interface:
+- The display does not flicker anymore.
+- Buttons are now linked to more than one function (see section [User manual](#user-manual) below) by using i. e. double-click or longpress events.
+- If the rotary encoder breaks, the radio can now be operated by using buttons only (see [Encoder-Simulation-Mode (ESM)](#encoder-simulation-mode) below)).
+- The radio already starts the last station while the intro screen is still showing.
+
+
+# Features
+
+* Modes: FM, AM and SSB
+* Two FM bands covering from 64 to 108 MHz
+* LW band
+* Two MW bands (one for Europe, Africa and Asia)
+* Twenty three bands. Two VHF(FM); one LW; two MW; and Nineteen SW bands covering from 1800 to 30000 kHz
+* FM/RDS
+* Bandwidth control on FM mode (Auto, 110, 84, 60 and 40 kHz)
+* Bandwidth control on AM mode (1, 2, 2.5, 3, 4 and 6 kHz)
+* Bandwidth control on SSB mode (0.5, 1, 1.2, 2.2, 3 and 4 kHz)
+* Receiver status stored into the EEPROM
+* The final code (HEX file) is about 2.5K smaller than the previous one (now  you have more memory to add new features)
+* All the previous status of the receiver can be rescued when you turn it on (including SSB mode, bandwidth, volume, frequency, BFO etc)
+* The bandwidth is a property of the band (you can use different bandwidth for different bands)
+* The seek function was improved (it is more precise on FM mode). The seek direction is controlled by the encoder (clockwise or counter-clockwise . Press encoder push button for seeking
+* Steps: 1, 5, 9, 10 and 50 kHz
+* Now you can configure MW band space to 9 or 10 kHz
+* Added a MW band for Europe, Africa and Asia
+* The frequency on Display is bigger than the previous version
+* Now the bandwidth sequence is ordered by bandwidth values
+* After about 4 seconds, all command buttons are all disabled and the encoder control goes back to the frequency
+
+
+# User manual
+## General behaviour
+
+* Some device come with an encoder that breaks easily. If that happens, the device can now be fully operated by using buttons only.
+* Buttons can now react on the follwing events:
+  - Shortclick (or just **CLICK**) occurs if a button has been shortpressed.
+  - A Doubleclick (or **2CLICK**) is two shortclicks in very quick succession.
+  - a Longpress (or **LP**) is a long press and hold of a button.
+  - a Double-Longpress (or **2LP**) is a short click followed by a longpress in very quick succession.
+  - **LP**/**2LP**-events have a continuous functionality attached normally (like constantly increase the volume as long as "Vol+" is pressed.
+    There are functions that react only once during a longpress episode (like **LP** on encoder to Mute/Unmute the radio).
+    To denote this, such events will be labelled as ****LP**(once)** or ****2LP**(once)**
+* The behaviour described below is the default behaviour, that might be changed to your liking (see [Button Configuration](#configuration-of-button-functions))
+
+
+## Button Commands
+
+- assigned to "BAND+":
+  - **CLICK**: toggle command to change the Band by rotating the encoder
+  - **2CLICK**: toggle between first and last band defined
+  - **LP**: Switch to next band as long as button is pressed, stop at the last defined band.
+  - **2LP(once)**: Switch (just once) to next band (again no wrap around)
+
+- assigned to "BAND-":
+  - **CLICK**: toggle command to change SoftMute by rotating the encoder (ignored in FM-Mode)
+  - **2CLICK**: toggle between min and max value of SoftMute (ignored in FM-Mode)
+  - **LP**: Switch to previous band as long as button is pressed, stop at the first band defined.
+  - **2LP(once)**: Switch (just once) to previous band (again no wrap around)
+
+- assigned to "VOL+":
+  - **CLICK**/**2CLICK**: toggle command to change the Volume by rotating the encoder
+  - **LP**/**2LP**: continuously increase Volume up to max (63)
+
+- assigned to "VOL-"
+  - **CLICK**: toggle command to change AVC by rotating the encoder (ignored in FM-Mode)
+  - **2CLICK**: toggle AVC value between min (12), average (38) and max (90) (not in FM-mode)
+  - **LP**: continuously decrease Volume up to min (0)
+  - **2LP**: continuously increase/decrease AVC between 12/90 (direction changes with every **2LP**) (not in FM-mode)  
+
+- assigned to "STEP" (not in FM-Mode):
+  - **CLICK**: toggle command to change Step by rotating the encoder
+  - **2CLICK**: toggle Step-Value between Min/Max-step defined (for specific AM/SSB band)
+  - **LP**/**2LP**: continuously increase/decrease Step between min/max (direction changes with every press)
+
+- assigned to "BW":
+  - **CLICK**: toggle command to change Bandwidth by rotating the encoder
+  - **2CLICK**: toggle Bandwidth between min/max defined for the current band
+  - **LP**: continuously increase/decrease Bandwidth between min/max (direction changes with every press)
+  - **2LP(once)**: set the default Bandwidth defined for the current band.
+
+- assigned to "AGC" (not in FM-Mode): 
+  - **CLICK**: toggle command to change AGC/Attenuation by rotating the encoder
+  - **2CLICK**: toggle Attenuation between min (0) and max (36)
+  - **LP**: continuously increase/decrease AGC/Attenuation between AGC/0..36 (direction changes with every press)
+  - **2LP(once)**: set AGC
+
+- assigned to "MODE":
+  - **CLICK**/**2CLICK**: in FM-Mode: toggle RDS off/on, else toggle between AM/LSB/USB-mode
+  - **LP(once)**/**2LP(once)**: toggle "Encoder-Simulation-Mode" (see below)
+
+- assigned to "Rotary-Encoder-Button" (at normal play):
+  - **2CLICK**/**2LP** will be ignored
+  - **CLICK**: if any command is selected (to be changed by rotary encoder), cancel that command immediately (not waiting for timeout)
+           else if in AM/FM-Mode: start search
+           else if in SSB-Mode: toggle rotary encoder between BFO/VFO-setting
+  - **LP(once)**: toggle Mute (if muted, "XX" will be displayed as current volume)
+
+- assigned to "Rotary-Encoder-Button" (at startup):
+  - if pressed when powered on, EEPROM will be cleared
+  - **CLICK**: if intro is still running will cancel the intro screen direction
+  - **LP**: if intro is still running will also clear the EEPROM 
+  - **2CLICK**/**2LP** will be ignored
+
+## Encoder-Simulation-Mode (ESM)
+
+* Some devices come with a rotary encoder that is broken easily. This mode is intended to simulate the encoder by buttons only.
+* If "Encoder-Simulation-Mode" is active, the display of the frequency unit (kHz/MHz) at the upper right will be inverted.
+* In Active encoder mode (full button event change description is below):
+  - **CLICK**/**LP** on "BAND+" will be the same as rotating the encoder right 
+  - **CLICK**/**LP** on "BAND-" will be the same as rotating the encoder left
+  - **CLICK**/**LP** on "AGC" will be the same as **CLICK**/**LP** on the encoder Button
+* Note that the encoder itself will stay fully operational in this mode
+
+- behaviour of button "BAND+" in ESM:
+  - **CLICK**: identical to one turn right of the encoder
+  - **2CLICK**: toggle command to change the Band by rotating the encoder (like **CLICK** in "normal" mode)
+  - **LP**: identical to continously turning the encoder right
+  - **2LP(once)**: Switch (just once) to next band (as in "normal mode")
+
+- behaviour of button "BAND-" in ESM:
+  - **CLICK**: identical to one turn left of the encoder
+  - **2CLICK**: toggle command to change SoftMute by rotating the encoder (like **CLICK** in "normal" mode)
+  - **LP**: identical to continously turning the encoder left
+  - **2LP(once)**: Switch (just once) to previous band (as in "normal mode")
+
+- behaviour of button "AGC" in ESM:
+  - **CLICK**: identical to **CLICK** on the encoder button
+  - **2CLICK**: toggle command to change AGC/Att by rotating the encoder (like "normal" **CLICK**, not in FM-Mode)
+  - **LP**: identical to **LP** on the encoder button
+  - **2LP**: Change AGC/Att as long as pressed (like "normal" **LP**, not in FM-Mode)
+
+
+# Configuration
+## General
+- The functionalities (of the buttones) can be altered by changing the [defines](#configuration-of-button-functions) in **Config.h** 
+- The button timings itself (i. e. timeout to distinguish between longpress and doublepress) can be changed by altering some [#defines](#configuration-of-button-timings) in **SimpleButton.h**
+
+## Configuration of Button functions
+## Configuration of Button timings

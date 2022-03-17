@@ -134,7 +134,7 @@ Note that the values are somewhat bitcoded:
 #define BUTTONEVENT_UNDO_DOUBLE(x)          (x & ~_BV(4))
 
 
-#define USE_TIMENOW      0  // if defined (!= 0) an external variable uint16_t timeNow; is used instead of millis()
+#define USE_TIMENOW      1  // if defined (!= 0) an external variable uint16_t millis16; is used instead of millis()
 
 class SimpleButton
 {
