@@ -36,7 +36,7 @@ This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47X
 # User manual
 ## General behaviour
 
-* Some device come with an encoder that breaks easily. If that happens, the device can now be fully operated by using buttons only.
+* Some device come with an encoder that breaks easily. If that happens, the device can now be fully operated by using buttons only (see [Encoder-Simulation-Mode](#encoder-simulation-mode-esm) below).
 * Buttons can now react on the follwing events:
   - Shortclick (or just **CLICK**) occurs if a button has been shortpressed.
   - A Doubleclick (or **2CLICK**) is two shortclicks in very quick succession.
@@ -109,7 +109,7 @@ This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47X
 ## Encoder-Simulation-Mode (ESM)
 
 * Some devices come with a rotary encoder that is broken easily. This mode is intended to simulate the encoder by buttons only.
-* If "Encoder-Simulation-Mode" is active, the display of the frequency unit (kHz/MHz) at the upper right will be inverted.
+* If "Encoder-Simulation-Mode" is active, the display of the frequency unit (kHz/MHz) at the upper right will be inverted. (To activate/deactivate ESM you have to **LP** the Mode-Button).
 * In Active encoder mode (full button event change description is below):
   - **CLICK**/**LP** on "BAND+" will be the same as rotating the encoder right 
   - **CLICK**/**LP** on "BAND-" will be the same as rotating the encoder left
