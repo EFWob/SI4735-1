@@ -137,7 +137,21 @@ This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47X
 
 # Configuration
 ## General
-- The functionalities (of the buttones) can be altered by changing the [defines](#configuration-of-button-functions) in **Config.h** 
+- The configuration can only be done at compile time, if you want to change some behaviour as described below you have to recompile and reflash your device.
+- To support debugging, two flags can be set in **Config.h**:
+    - **#DEBUG** if this flag is defined 
+        - Serial output is enabled at 115200 baud
+        - Button events will be displayed on Serial monitor
+        - **LP**/**2LP** episodes will show multiple events in the following order:
+            - **LP/2LP start** Longpress/Double longpress just started
+            - **LP/2LP repeat** Longpress/Double longpress ongoing
+            - **LP/2LP done** Longpress/Double longpress finished
+    - **#DEBUG_BUTTONS_ONLY** if this flag is defined (but only if **#DEBUG** is defined as well)
+        - Same info on Serial as before (with clear name of button pressed) 
+        - Radio will not play
+            - this mode is especially useful to [adjust button timings](#configuration-of-button-timings)
+    - if **#DEBUG** is set (but not **#DEBUG_BUTTONS_ONLY**) the ressources are maxed out: flash is at 99% then 
+- The functionalities (of the buttones) can be altered by changing some [#defines](#configuration-of-button-functions) in **Config.h** 
 - The button timings itself (i. e. timeout to distinguish between longpress and doublepress) can be changed by altering some [#defines](#configuration-of-button-timings) in **SimpleButton.h**
 
 ## Configuration of Button functions

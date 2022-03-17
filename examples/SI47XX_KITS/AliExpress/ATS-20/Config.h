@@ -1,7 +1,7 @@
 #ifndef config_h
 #define config_h
 // CONFIG-SECTION
-//#define DEBUG                 // if defined, Serial output will show some info on button press events (at 115200 baud)
+#define DEBUG                 // if defined, Serial output will show some info on button press events (at 115200 baud)
 //#define DEBUG_BUTTONS_ONLY    // if defined (in addition to DEBUG), only button events will be reported on Serial, no radio function
                               // (use this to adjust the BUTTONTIME_XXXX-defines in include file "SimpleButton.h" to your liking)
 

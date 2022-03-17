@@ -695,7 +695,8 @@ void setup()
 // DEBUG must be defined for the function to have any effect
 #if defined(DEBUG)
 uint8_t buttonEvent(uint8_t event, uint8_t pin) {
-  Serial.print("Ev=");Serial.print(event);Serial.print(" Pin=");Serial.print(pin);
+  Serial.print("Ev=");if (event < 10) Serial.print(' ');Serial.print(event);
+  Serial.print(" Pin=");if (pin < 10) Serial.print(' ');Serial.print(pin);
 #if defined(DEBUG_BUTTONS_ONLY)
 struct {
   uint8_t pin;
@@ -720,9 +721,9 @@ struct {
       break;
   if (i < KNOWN_BUTTONS)
   {
-    Serial.print("aka \"");
+    Serial.print('"');
     Serial.print(pinNames[i].name);
-    Serial.print("\"");
+    Serial.print('\"');
   }
   else
     Serial.print("???undefined???");
@@ -731,23 +732,23 @@ struct {
   
   Serial.print(">>");
   if (BUTTONEVENT_ISDOUBLE(event))
-    Serial.print("DOUBLE ");
+    Serial.print("2");
   event = event & 0xef;
   if (BUTTONEVENT_ISLONGPRESS(event))
   { 
     if (BUTTONEVENT_FIRSTLONGPRESS == event)
-      Serial.println("LP started!");
+      Serial.println("LP start");
     else if (BUTTONEVENT_LONGPRESS == event)
-      Serial.println("LP repeat!");
+      Serial.println("LP repeat");
     else if (BUTTONEVENT_LONGPRESSDONE == event)
-      Serial.println("LP Done!");
+      Serial.println("LP done");
     else 
       Serial.println("LP: UNEXPECTED!!!!");
   }
   else if (event == BUTTONEVENT_SHORTPRESS)
-    Serial.println("Click!");
+    Serial.println("CLICK");
   else if (event == BUTTONEVENT_2CLICK)
-    Serial.println("2Click!");
+    Serial.println("2CLICK");
   else
     Serial.println("UNEXPECTED!!!!");
   return event;
