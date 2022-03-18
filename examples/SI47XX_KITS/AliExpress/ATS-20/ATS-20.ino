@@ -758,194 +758,6 @@ struct {
 #define buttonEvent NULL
 #endif
 
-//Handle Longpress of VolumeUp/VolumeDn (shortpress is handled in loop()) 
-uint8_t volumeEvent(uint8_t event, uint8_t pin) {
-#ifdef DEBUG
-  buttonEvent(event, pin);
-#endif
-#if (0 != AVC_2CLICKENABLE)
-  if (VOLUMEDN_BUTTON == pin)
-    if (BUTTONEVENT_ISDOUBLE(event))
-    {
-      static uint8_t count = 0;
-      static int8_t direction = 2;
-      if (FM != currentMode)
-      {
-        if ((BUTTONEVENT_2CLICK == event) || (BUTTONEVENT_2FIRSTLONGPRESS == event))
-        {
-          if (cmdSoftMute || cmdAgcAtt)
-          {
-            disableCommand(NULL, false, NULL);
-            cmdAvc = true;
-          }
-          if (BUTTONEVENT_2CLICK == event)
-          {
-            avcIdx = (90 == avcIdx)?12:(38 > avcIdx?38:90);
-            doAvc(0);
-          }
-          else 
-          {
-            count = AVC_2CLICKENABLE;
-            if (90 == avcIdx)
-              direction = -2;
-            else if (12 == avcIdx)
-              direction = 2;
-            else
-              direction = -1 * direction;
-          }
-        }
-        else if (BUTTONEVENT_2LONGPRESS == event)
-          count++;
-        if (AVC_2CLICKENABLE == count)
-        {
-          uint8_t x = avcIdx + direction;
-          count = 0;
-          if ((x >= 12) && (x <= 90))
-          {
-            avcIdx = x;
-            doAvc(0);
-          }
-        }
-      }
-      event = BUTTON_PRESSED;
-    }
-#endif
-  event = BUTTONEVENT_UNDO_DOUBLE(event);
-  if (muteVolume)                               // currently muted?
-    if (!BUTTONEVENT_ISDONE(event))             // Any event to change the volume?
-      if ((BUTTONEVENT_SHORTPRESS != event) || (VOLUMEUP_BUTTON == pin))
-        doVolume(1);                              // yes-->Unmute
-#if (0 != VOLUME_DELAY)
-#if (VOLUME_DELAY > 1)
-  static uint8_t count;
-  if (BUTTONEVENT_FIRSTLONGPRESS == event)
-  {
-    count = 0;
-  }
-#endif
-  if (BUTTONEVENT_ISLONGPRESS(event))           // longpress-Event?
-    if (BUTTONEVENT_LONGPRESSDONE != event)     // but not the final release of button?
-    {
-#if (VOLUME_DELAY > 1)
-      if (count++ == 0)
-#endif
-        doVolume(VOLUMEUP_BUTTON == pin?1:-1); 
-#if (VOLUME_DELAY > 1)
-      count = count % VOLUME_DELAY;
-#endif
-    }
-#else
-  if (BUTTONEVENT_FIRSTLONGPRESS == event)
-    event = BUTTONEVENT_SHORTPRESS;
-#endif
-  return event;
-}
-
-//Handle Pressing events (Long- and Shortpress) of Encoder button
-uint8_t encoderEvent(uint8_t event, uint8_t pin) {
-#ifdef DEBUG
-  buttonEvent(event, pin);
-#endif
-  if (BUTTONEVENT_SHORTPRESS == event)
-  {
-#if (0 != ENCODER_ENTER)
-    if (cmdAnyOn)
-    {
-      disableCommand(NULL, false, NULL); // disable all command buttons
-      return BUTTON_IDLE;      
-    }
-#endif
-    if (currentMode == LSB || currentMode == USB)
-    {
-      bfoOn = !bfoOn;
-#if (0 != DISPLAY_OLDSTYLE)
-      showFrequency();
-#endif
-      if (cmdAnyOn)
-        disableCommand(NULL, false, NULL); // disable all command buttons
-      else
-        showBFO();
-    }
-    else if (currentMode == FM || currentMode == AM)
-    {
-#if (0 != ENCODER_SEARCH)
-      // Jumps up or down one space
-      if (seekDirection)
-        si4735.frequencyUp();
-      else
-        si4735.frequencyDown();
-      si4735.seekStationProgress(showFrequencySeek, checkStopSeeking, seekDirection);
-      delay(30);
-      if (currentMode == FM)
-      {
-        float f = round(si4735.getFrequency() / 10.0);
-        currentFrequency = (uint16_t)f * 10; // adjusts band space from 1 (10kHz) to 10 (100 kHz)
-        si4735.setFrequency(currentFrequency);
-      }
-      else
-      {
-        currentFrequency = si4735.getFrequency(); //
-      }
-      showFrequency();
-#endif      
-    }
-  }    
-
-
-#if (0 != ENCODER_MUTEDELAY)
-  static uint8_t waitBeforeMute;
-  if (BUTTONEVENT_FIRSTLONGPRESS == event)
-  {
-    waitBeforeMute = ENCODER_MUTEDELAY;
-  }
-  else if ((BUTTONEVENT_LONGPRESS == event) && (0 != waitBeforeMute))
-    if (0 == --waitBeforeMute)
-    {
-      uint8_t x = muteVolume;
-      muteVolume = si4735.getVolume();
-      si4735.setVolume(x);
-      showVolume(); 
-    }
-#else
-  if (BUTTONEVENT_FIRSTLONGPRESS == event)
-    event = BUTTONEVENT_SHORTPRESS;
-#endif
-  return event;
-}
-
-uint8_t modeEvent(uint8_t event, uint8_t pin) {
-#ifdef DEBUG
-  buttonEvent(event, pin);  
-#endif
-
-#if (0 != ENCODERMODE_DELAY)
-static uint8_t count = 0;
-#endif
-
-
-  if (BUTTONEVENT_FIRSTLONGPRESS == event)
-  {
-#if (0 != ENCODERMODE_DELAY)
-    count = 0;
-#else
-    event = BUTTONEVENT_SHORTPRESS;
-#endif
-  }
-#if (0 != ENCODERMODE_DELAY)
-  else if (BUTTONEVENT_LONGPRESS == event)
-  {
-    if (count < ENCODERMODE_DELAY)
-      if (++count == ENCODERMODE_DELAY)
-      {
-        encoderMode = !encoderMode;
-        showEncoderMode();
-      }
-  }
-#endif
-  
-  return event;
-}
-
 void applyParameterChange(uint8_t *parameter, int8_t direction, uint8_t max, void (*changeFunction)(int8_t dir, bool show), bool show = true)
 {
   if (((1 == direction) && (*parameter < max)) || ((1 != direction) && (*parameter > 0)) || (0 == direction))
@@ -955,176 +767,10 @@ void applyParameterChange(uint8_t *parameter, int8_t direction, uint8_t max, voi
   }
 }
 
-uint8_t bandwidthEvent(uint8_t event, uint8_t pin) {
-#ifdef DEBUG
-  buttonEvent(event, pin);
-#endif
-#if (0 != BANDWIDTH_2CLICKENABLE)
-  if (BUTTONEVENT_ISDOUBLE(event))
-  {
-    if ((BUTTONEVENT_2CLICK == event) || (BUTTONEVENT_2FIRSTLONGPRESS == event))
-    {
-      *bwFlag = BUTTONEVENT_2CLICK == event?(*bwFlag == bwMax?0:bwMax):bwDefault;
-      applyParameterChange(bwFlag, 0, bwMax, doBandwidth);
-    }
-    event = BUTTON_PRESSED;
-  }
-#endif
-  event = BUTTONEVENT_UNDO_DOUBLE(event);
-#if (0 != BANDWIDTH_DELAY)
-  if (BUTTONEVENT_ISLONGPRESS(event))
-  {
-    static uint8_t direction = 1;
-    if (BUTTONEVENT_ISDONE(event))
-      direction = (direction == 1)?-1:1;
-    else
-    {
-      static uint8_t count;
-      if (BUTTONEVENT_FIRSTLONGPRESS == event)
-      {
-        count = 0;
-        if (0 == *bwFlag)
-          direction = 1;
-        else if (*bwFlag == bwMax)
-          direction = -1;
-      }
-      if (0 == count)
-      {
-        applyParameterChange(bwFlag, direction, bwMax, doBandwidth);
-      }
-      count = (count + 1) % BANDWIDTH_DELAY;
-    }
-  }
-#else
-  if (BUTTONEVENT_FIRSTLONGPRESS == event)
-    event = BUTTONEVENT_SHORTPRESS;
-#endif
-  return event;
-}
-
-uint8_t stepEvent(uint8_t event, uint8_t pin) {
-#ifdef DEBUG
-  buttonEvent(event, pin);
-#endif
-  if (FM == currentMode)
-    return BUTTON_IDLE;
-#if (0 != STEP_2CLICKENABLE)
-  if (BUTTONEVENT_ISDOUBLE(event))
-  {
-    if (BUTTONEVENT_2CLICK == event)
-    {
-      idxStep = (idxStep == lastStep?0:lastStep);
-      //applyParameterChange(&idxStep, 0, lastStep, doStep);
-      doStep(0);
-      event = BUTTON_PRESSED;
-    }
-  }
-#endif
-  event = BUTTONEVENT_UNDO_DOUBLE(event);
-#if (0 != STEP_DELAY)
-    if (BUTTONEVENT_ISLONGPRESS(event))
-    {
-      static uint8_t direction = 1;
-      static uint8_t count;
-      if (BUTTONEVENT_LONGPRESSDONE == event)
-        direction = (1==direction)?-1:1;
-      else
-      {
-        if (BUTTONEVENT_FIRSTLONGPRESS == event)
-        {
-          count = 0;
-          if (0 == idxStep)
-            direction = 1;
-          else if (lastStep == idxStep)
-            direction = -1;
-        }
-        if (0 == count++)
-          if (bfoOn || (idxStep != ((1 == direction)?lastStep:0)))
-            doStep(direction);
-        count = count % STEP_DELAY;
-      }
-    }
-#else
-  if (BUTTONEVENT_FIRSTLONGPRESS == event)
-    event = BUTTONEVENT_SHORTPRESS;
-#endif
-  return event;
-}
-
-uint8_t agcEvent(uint8_t event, uint8_t pin) {
-#ifdef DEBUG
-  buttonEvent(event, pin);
-#endif
-#if (0 != ENCODER_MUTEDELAY)
-  if (encoderMode)
-    if (BUTTONEVENT_ISDOUBLE(event))
-      event = BUTTONEVENT_UNDO_DOUBLE(event);
-    else
-    {
-      encoderEvent(event, 0);
-      return BUTTON_IDLE;
-    }
-#endif
-#if (0 != AGC_2CLICKENABLE)
-  if (BUTTONEVENT_ISDOUBLE(event))
-  {
-    if ((BUTTONEVENT_2CLICK == event) || (BUTTONEVENT_2FIRSTLONGPRESS == event))
-    {
-      if (FM != currentMode)
-      {
-        if (cmdSoftMute || cmdAvc)
-        {
-          disableCommand(NULL, false, NULL);
-          cmdAgcAtt = true;
-        }
-        agcIdx = (BUTTONEVENT_2CLICK == event)?(37 == agcIdx?1:37):0;
-        doAttenuation(0);
-      }
-    }
-    event = BUTTON_PRESSED;
-  }
-#endif
-#if (0 != AGC_DELAY)
-  if (FM != currentMode)
-    if (BUTTONEVENT_ISLONGPRESS(event))
-    {
-      static uint8_t direction = 1;
-      static uint8_t count;
-      if (BUTTONEVENT_LONGPRESSDONE == event)
-        direction = (direction == 1)?-1:1;
-      else
-      {
-        if (BUTTONEVENT_FIRSTLONGPRESS == event)
-        {
-          count = 0;
-          if (0 == agcIdx)
-            direction = 1;
-          else if (37 == agcIdx)
-            direction = -1;
-        }
-        if (0 == count++)
-        {
-          //applyParameterChange(&agcIdx, direction, 37, doAttenuation);
-          int8_t x = agcIdx + direction;
-          if ((x >= 0) && (x <= 37))
-          {
-            agcIdx = x;
-            doAttenuation(0);
-          }
-        }
-        count = count % AGC_DELAY;
-      }
-    }
-#else
-  if (BUTTONEVENT_FIRSTLONGPRESS == event)
-    event = BUTTONEVENT_SHORTPRESS;
-#endif
-  return event;
-}
 
 
 
-//Handle Longpress of BandUp/BandDn (shortpress is handled in loop()) 
+//Handle Actions of "Band+"/"Band-"-buttons
 uint8_t bandEvent(uint8_t event, uint8_t pin) {
 static uint8_t count;
 bool direction = (BANDUP_BUTTON == pin);
@@ -1194,7 +840,7 @@ bool direction = (BANDUP_BUTTON == pin);
       {
         if (cmdAvc || cmdAgcAtt)
         {
-          disableCommand(NULL, false, NULL);
+          disableCommand(NULL, NULL);
           cmdSoftMute = true;
           }
         smIdx = (smIdx < 32)?32:0;
@@ -1257,8 +903,432 @@ bool direction = (BANDUP_BUTTON == pin);
   if (BUTTONEVENT_FIRSTLONGPRESS == event)
     event = BUTTONEVENT_SHORTPRESS;
 #endif
-  return event;
-}
+  if (BUTTONEVENT_SHORTPRESS == event)
+    if (BANDUP_BUTTON == pin)
+       disableCommand(&cmdBand, showBandDesc);
+    else
+      if (currentMode != FM) 
+        disableCommand(&cmdSoftMute, showSoftMute);
+  return BUTTON_IDLE;
+}  //end of bandEvent()
+
+
+//Handle Actions of "Vol+"/"Vol-"-buttons
+uint8_t volumeEvent(uint8_t event, uint8_t pin) {
+#ifdef DEBUG
+  buttonEvent(event, pin);
+#endif
+#if (0 != AVC_2CLICKENABLE)
+  if (VOLUMEDN_BUTTON == pin)
+    if (BUTTONEVENT_ISDOUBLE(event))
+    {
+      static uint8_t count = 0;
+      static int8_t direction = 2;
+      if (FM != currentMode)
+      {
+        if ((BUTTONEVENT_2CLICK == event) || (BUTTONEVENT_2FIRSTLONGPRESS == event))
+        {
+          if (cmdSoftMute || cmdAgcAtt)
+          {
+            disableCommand(NULL, NULL);
+            cmdAvc = true;
+          }
+          if (BUTTONEVENT_2CLICK == event)
+          {
+            avcIdx = (90 == avcIdx)?12:(38 > avcIdx?38:90);
+            doAvc(0);
+          }
+          else 
+          {
+            count = AVC_2CLICKENABLE;
+            if (90 == avcIdx)
+              direction = -2;
+            else if (12 == avcIdx)
+              direction = 2;
+            else
+              direction = -1 * direction;
+          }
+        }
+        else if (BUTTONEVENT_2LONGPRESS == event)
+          count++;
+        if (AVC_2CLICKENABLE == count)
+        {
+          uint8_t x = avcIdx + direction;
+          count = 0;
+          if ((x >= 12) && (x <= 90))
+          {
+            avcIdx = x;
+            doAvc(0);
+          }
+        }
+      }
+      event = BUTTON_PRESSED;
+    }
+#endif
+  event = BUTTONEVENT_UNDO_DOUBLE(event);
+  if (muteVolume)                               // currently muted?
+    if (!BUTTONEVENT_ISDONE(event))             // Any event to change the volume?
+      if ((BUTTONEVENT_SHORTPRESS != event) || (VOLUMEUP_BUTTON == pin))
+        doVolume(1);                              // yes-->Unmute
+#if (0 != VOLUME_DELAY)
+#if (VOLUME_DELAY > 1)
+  static uint8_t count;
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)
+  {
+    count = 0;
+  }
+#endif
+  if (BUTTONEVENT_ISLONGPRESS(event))           // longpress-Event?
+    if (BUTTONEVENT_LONGPRESSDONE != event)     // but not the final release of button?
+    {
+#if (VOLUME_DELAY > 1)
+      if (count++ == 0)
+#endif
+        doVolume(VOLUMEUP_BUTTON == pin?1:-1); 
+#if (VOLUME_DELAY > 1)
+      count = count % VOLUME_DELAY;
+#endif
+    }
+#else
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)
+    event = BUTTONEVENT_SHORTPRESS;
+#endif
+    if (BUTTONEVENT_SHORTPRESS == event)
+      if (VOLUMEUP_BUTTON == pin)
+        disableCommand(&cmdVolume, showVolume);
+      else
+        if (currentMode != FM) 
+          disableCommand(&cmdAvc, showAvc);
+       
+  return BUTTON_IDLE;
+} // End of volumeEvent()
+
+
+//Handle Actions of "Step"-button
+uint8_t stepEvent(uint8_t event, uint8_t pin) {
+#ifdef DEBUG
+  buttonEvent(event, pin);
+#endif
+  if (FM == currentMode)
+    return BUTTON_IDLE;
+#if (0 != STEP_2CLICKENABLE)
+  if (BUTTONEVENT_ISDOUBLE(event))
+  {
+    if (BUTTONEVENT_2CLICK == event)
+    {
+      idxStep = (idxStep == lastStep?0:lastStep);
+      //applyParameterChange(&idxStep, 0, lastStep, doStep);
+      doStep(0);
+      event = BUTTON_PRESSED;
+    }
+  }
+#endif
+  event = BUTTONEVENT_UNDO_DOUBLE(event);
+#if (0 != STEP_DELAY)
+    if (BUTTONEVENT_ISLONGPRESS(event))
+    {
+      static uint8_t direction = 1;
+      static uint8_t count;
+      if (BUTTONEVENT_LONGPRESSDONE == event)
+        direction = (1==direction)?-1:1;
+      else
+      {
+        if (BUTTONEVENT_FIRSTLONGPRESS == event)
+        {
+          count = 0;
+          if (0 == idxStep)
+            direction = 1;
+          else if (lastStep == idxStep)
+            direction = -1;
+        }
+        if (0 == count++)
+          if (bfoOn || (idxStep != ((1 == direction)?lastStep:0)))
+            doStep(direction);
+        count = count % STEP_DELAY;
+      }
+    }
+#else
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)
+    event = BUTTONEVENT_SHORTPRESS;
+#endif
+    if (BUTTONEVENT_SHORTPRESS == event)
+      if (currentMode != FM)
+      {
+        disableCommand(&cmdStep, showStep);
+        if (bfoOn)
+          showBFO();
+      }
+  return BUTTON_IDLE;
+} //End of stepEvent()
+
+
+//Handle Actions of "BW"-button
+uint8_t bandwidthEvent(uint8_t event, uint8_t pin) {
+#ifdef DEBUG
+  buttonEvent(event, pin);
+#endif
+#if (0 != BANDWIDTH_2CLICKENABLE)
+  if (BUTTONEVENT_ISDOUBLE(event))
+  {
+    if ((BUTTONEVENT_2CLICK == event) || (BUTTONEVENT_2FIRSTLONGPRESS == event))
+    {
+      *bwFlag = BUTTONEVENT_2CLICK == event?(*bwFlag == bwMax?0:bwMax):bwDefault;
+      applyParameterChange(bwFlag, 0, bwMax, doBandwidth);
+    }
+    event = BUTTON_PRESSED;
+  }
+#endif
+  event = BUTTONEVENT_UNDO_DOUBLE(event);
+#if (0 != BANDWIDTH_DELAY)
+  if (BUTTONEVENT_ISLONGPRESS(event))
+  {
+    static uint8_t direction = 1;
+    if (BUTTONEVENT_ISDONE(event))
+      direction = (direction == 1)?-1:1;
+    else
+    {
+      static uint8_t count;
+      if (BUTTONEVENT_FIRSTLONGPRESS == event)
+      {
+        count = 0;
+        if (0 == *bwFlag)
+          direction = 1;
+        else if (*bwFlag == bwMax)
+          direction = -1;
+      }
+      if (0 == count)
+      {
+        applyParameterChange(bwFlag, direction, bwMax, doBandwidth);
+      }
+      count = (count + 1) % BANDWIDTH_DELAY;
+    }
+  }
+#else
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)
+    event = BUTTONEVENT_SHORTPRESS;
+#endif
+  if(BUTTONEVENT_SHORTPRESS == event)
+      disableCommand(&cmdBw, showBandwidth);
+
+  return BUTTON_IDLE;
+} //End of handeBandwidth()
+
+
+//Handle Actions of "AGC"-button
+uint8_t agcEvent(uint8_t event, uint8_t pin) {
+#ifdef DEBUG
+  buttonEvent(event, pin);
+#endif
+#if (0 != ENCODER_MUTEDELAY)
+  if (encoderMode)
+    if (BUTTONEVENT_ISDOUBLE(event))
+      event = BUTTONEVENT_UNDO_DOUBLE(event);
+    else
+    {
+      encoderEvent(event, 0);
+      return BUTTON_IDLE;
+    }
+#endif
+#if (0 != AGC_2CLICKENABLE)
+  if (BUTTONEVENT_ISDOUBLE(event))
+  {
+    if ((BUTTONEVENT_2CLICK == event) || (BUTTONEVENT_2FIRSTLONGPRESS == event))
+    {
+      if (FM != currentMode)
+      {
+        if (cmdSoftMute || cmdAvc)
+        {
+          disableCommand(NULL, NULL);
+          cmdAgcAtt = true;
+        }
+        agcIdx = (BUTTONEVENT_2CLICK == event)?(37 == agcIdx?1:37):0;
+        doAttenuation(0);
+      }
+    }
+    event = BUTTON_PRESSED;
+  }
+#endif
+#if (0 != AGC_DELAY)
+  if (FM != currentMode)
+    if (BUTTONEVENT_ISLONGPRESS(event))
+    {
+      static uint8_t direction = 1;
+      static uint8_t count;
+      if (BUTTONEVENT_LONGPRESSDONE == event)
+        direction = (direction == 1)?-1:1;
+      else
+      {
+        if (BUTTONEVENT_FIRSTLONGPRESS == event)
+        {
+          count = 0;
+          if (0 == agcIdx)
+            direction = 1;
+          else if (37 == agcIdx)
+            direction = -1;
+        }
+        if (0 == count++)
+        {
+          //applyParameterChange(&agcIdx, direction, 37, doAttenuation);
+          int8_t x = agcIdx + direction;
+          if ((x >= 0) && (x <= 37))
+          {
+            agcIdx = x;
+            doAttenuation(0);
+          }
+        }
+        count = count % AGC_DELAY;
+      }
+    }
+#else
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)
+    event = BUTTONEVENT_SHORTPRESS;
+#endif
+  if (BUTTONEVENT_SHORTPRESS == event) 
+    if ( currentMode != FM)
+      disableCommand(&cmdAgcAtt, showAttenuation);
+
+  return BUTTON_IDLE;
+}  //End of agcEvent()
+
+
+//Handle Actions of "Mode"-button
+uint8_t modeEvent(uint8_t event, uint8_t pin) {
+#ifdef DEBUG
+  buttonEvent(event, pin);  
+#endif
+
+#if (0 != ENCODERMODE_DELAY)
+static uint8_t count = 0;
+#endif
+
+
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)
+  {
+#if (0 != ENCODERMODE_DELAY)
+    count = 0;
+#else
+    event = BUTTONEVENT_SHORTPRESS;
+#endif
+  }
+#if (0 != ENCODERMODE_DELAY)
+  else if (BUTTONEVENT_LONGPRESS == event)
+  {
+    if (count < ENCODERMODE_DELAY)
+      if (++count == ENCODERMODE_DELAY)
+      {
+        encoderMode = !encoderMode;
+        showEncoderMode();
+      }
+  }
+#endif
+    if (BUTTONEVENT_SHORTPRESS == event)
+    {
+      if (currentMode != FM)
+      {
+        if (currentMode == AM)
+        {
+          // If you were in AM mode, it is necessary to load SSB patch (avery time)
+          loadSSB();
+          currentMode = LSB;
+        }
+        else if (currentMode == LSB)
+        {
+          currentMode = USB;
+        }
+        else// if (currentMode == USB)
+        {
+          currentMode = AM;
+          ssbLoaded = false;
+          bfoOn = false;
+        }
+        // Nothing to do if you are in FM mode
+        band[bandIdx].currentFreq = currentFrequency;
+        band[bandIdx].currentStepIdx = idxStep;
+        useBand();
+      }
+      else
+      {
+        rdsOff = !rdsOff;
+        cleanBfoRdsInfo();
+      }
+    }  
+  return BUTTON_IDLE;
+} //End of modeEvent()
+
+//Handle Actions of Encoder-button
+uint8_t encoderEvent(uint8_t event, uint8_t pin) {
+#ifdef DEBUG
+  buttonEvent(event, pin);
+#endif
+  if (BUTTONEVENT_SHORTPRESS == event)
+  {
+#if (0 != ENCODER_ENTER)
+    if (cmdAnyOn)
+    {
+      disableCommand(NULL, NULL); // disable all command buttons
+      return BUTTON_IDLE;      
+    }
+#endif
+    if (currentMode == LSB || currentMode == USB)
+    {
+      bfoOn = !bfoOn;
+#if (0 != DISPLAY_OLDSTYLE)
+      showFrequency();
+#endif
+      if (cmdAnyOn)
+        disableCommand(NULL, NULL); // disable all command buttons
+      else
+        showBFO();
+    }
+    else if (currentMode == FM || currentMode == AM)
+    {
+#if (0 != ENCODER_SEARCH)
+      // Jumps up or down one space
+      if (seekDirection)
+        si4735.frequencyUp();
+      else
+        si4735.frequencyDown();
+      si4735.seekStationProgress(showFrequencySeek, checkStopSeeking, seekDirection);
+      delay(30);
+      if (currentMode == FM)
+      {
+        float f = round(si4735.getFrequency() / 10.0);
+        currentFrequency = (uint16_t)f * 10; // adjusts band space from 1 (10kHz) to 10 (100 kHz)
+        si4735.setFrequency(currentFrequency);
+      }
+      else
+      {
+        currentFrequency = si4735.getFrequency(); //
+      }
+      showFrequency();
+#endif      
+    }
+  }    
+
+
+#if (0 != ENCODER_MUTEDELAY)
+  static uint8_t waitBeforeMute;
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)
+  {
+    waitBeforeMute = ENCODER_MUTEDELAY;
+  }
+  else if ((BUTTONEVENT_LONGPRESS == event) && (0 != waitBeforeMute))
+    if (0 == --waitBeforeMute)
+    {
+      uint8_t x = muteVolume;
+      muteVolume = si4735.getVolume();
+      si4735.setVolume(x);
+      showVolume(); 
+    }
+#else
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)
+    event = BUTTONEVENT_SHORTPRESS;
+#endif
+  return BUTTON_IDLE;
+} //End of encoderEvent()
+
+
+
 
 
 
@@ -1363,6 +1433,12 @@ void showFrequency()
   if (FM == currentMode) //band[bandIdx].bandType == FM_BAND_TYPE)
   {
     convertToChar(currentFrequency, freqDisplay, 5, 3, ',');
+    cleanBfoRdsInfo();
+
+/*
+    if (currentFrequency != previousFrequency)
+      if (!rdsOff)
+*/
     //unit = (char *)"MHz";
   }
   else
@@ -1968,9 +2044,13 @@ void doBandwidth(int8_t v, bool show = true)
 /**
    disble command buttons and keep the current status of the last command button pressed
 */
-void disableCommand(bool *b, bool value, void (*showFunction)())
+void disableCommand(bool *b, void (*showFunction)())
 {
 bool wasAnyOn = cmdAnyOn;
+bool value = false;
+  if (b != NULL)
+    *b = value = !*b;
+
   if (wasAnyOn)
   {  
     cmdVolume = false;
@@ -2097,97 +2177,26 @@ uint8_t x;
   btn_Step.checkEvent(buttonEvent) ;
   btn_Mode.checkEvent(buttonEvent) ;
   btn_Encoder.checkEvent(buttonEvent) ;
-  return;
-#endif  
+#else
+
   // Check if the encoder has moved.
   doEncoderAction();
   // Check button commands
     // check if some button is pressed
-    // Shortpress-Events are handled direct, longpress-Events by the specific "event-handler" (the callback function passed to
-    // checkEvent
-    // If buttonEvent is used as callback, there is no specific functionality attached to longpress, but info is logged on Serial
-    // if the flag "DEBUG" is defined (see above)
-    
-    if (BUTTONEVENT_SHORTPRESS == btn_Bandwidth.checkEvent(bandwidthEvent))
-    {
-      cmdBw = !cmdBw;
-      disableCommand(&cmdBw, cmdBw, showBandwidth);
-    }
-    if (BUTTONEVENT_SHORTPRESS == btn_BandUp.checkEvent(bandEvent)) 
-    {
-      cmdBand = !cmdBand;
-      disableCommand(&cmdBand, cmdBand, showBandDesc);
-    }
-    if (BUTTONEVENT_SHORTPRESS == btn_BandDn.checkEvent(bandEvent))
-    {
-      if (currentMode != FM) {
-        cmdSoftMute = !cmdSoftMute;
-        disableCommand(&cmdSoftMute, cmdSoftMute, showSoftMute);
-      }
-    }
-    if (BUTTONEVENT_SHORTPRESS == btn_VolumeUp.checkEvent(volumeEvent)) 
-    {
-      cmdVolume = !cmdVolume;
-      disableCommand(&cmdVolume, cmdVolume, showVolume);
-    }
-    if (BUTTONEVENT_SHORTPRESS == btn_VolumeDn.checkEvent(volumeEvent))
-    {
-      if (currentMode != FM) {
-        cmdAvc = !cmdAvc;
-        //Serial.print("Toggle AVC=");Serial.println(cmdAvc);
-        disableCommand(&cmdAvc, cmdAvc, showAvc);
-      }
-    }
-    btn_Encoder.checkEvent(encoderEvent);
-    if (BUTTONEVENT_SHORTPRESS == btn_AGC.checkEvent(agcEvent))
-    {
-      if ( currentMode != FM) {
-        cmdAgcAtt = !cmdAgcAtt;
-        disableCommand(&cmdAgcAtt, cmdAgcAtt, showAttenuation);
-      }
-    }
-    if (BUTTONEVENT_SHORTPRESS == btn_Step.checkEvent(stepEvent))
-    {
-      if (currentMode != FM)
-      {
-        cmdStep = !cmdStep;
-        disableCommand(&cmdStep, cmdStep, showStep);
-        if (bfoOn)
-          showBFO();
-      }
-    }
-    if (BUTTONEVENT_SHORTPRESS == btn_Mode.checkEvent(modeEvent))
-    {
-      if (currentMode != FM)
-      {
-        if (currentMode == AM)
-        {
-          // If you were in AM mode, it is necessary to load SSB patch (avery time)
-          loadSSB();
-          currentMode = LSB;
-        }
-        else if (currentMode == LSB)
-        {
-          currentMode = USB;
-        }
-        else// if (currentMode == USB)
-        {
-          currentMode = AM;
-          ssbLoaded = false;
-          bfoOn = false;
-        }
-        // Nothing to do if you are in FM mode
-        band[bandIdx].currentFreq = currentFrequency;
-        band[bandIdx].currentStepIdx = idxStep;
-        useBand();
-      }
-      else
-      {
-        rdsOff = !rdsOff;
-        cleanBfoRdsInfo();
-      }
-    }
+    // Events are handled by the specific "event-handler", i. e. the callback function passed to checkEvent() 
 
+   btn_BandUp.checkEvent(bandEvent);
+   btn_BandDn.checkEvent(bandEvent);
+   btn_VolumeUp.checkEvent(volumeEvent);
+   btn_VolumeDn.checkEvent(volumeEvent);
+   btn_Step.checkEvent(stepEvent);
+   btn_Bandwidth.checkEvent(bandwidthEvent);
+   btn_AGC.checkEvent(agcEvent);
+   btn_Mode.checkEvent(modeEvent);
+
+   btn_Encoder.checkEvent(encoderEvent);
+
+  
   // Show RSSI status only if this condition has changed
   if ((millis16 - elapsedRSSI) > MIN_ELAPSED_RSSI_TIME)// * 9)
   {
@@ -2201,25 +2210,18 @@ uint8_t x;
 
     if (countRSSI++ > 3)
     {
-      disableCommand(NULL, false, NULL); // disable all command buttons
+      disableCommand(NULL, NULL); // disable all command buttons
     }
     else
       elapsedRSSI = millis16;
   }
 
+
   if (currentMode == FM)
-  {
-    if (currentFrequency != previousFrequency)
-    {
-      if (!rdsOff)
-        cleanBfoRdsInfo();
-    }
-    else
-    {
-      if (!rdsOff)
-        checkRDS();
-    }
-  }
+    if (!rdsOff)
+        {
+          checkRDS();
+        }
 
   // Show the current frequency only if it has changed
   if (currentFrequency != previousFrequency)
@@ -2231,5 +2233,5 @@ uint8_t x;
       previousFrequency = currentFrequency;
     }
   }
-  //delay(10);
+#endif
 }
