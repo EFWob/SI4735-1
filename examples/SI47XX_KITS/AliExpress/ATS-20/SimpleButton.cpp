@@ -32,7 +32,7 @@ SimpleButton::SimpleButton(uint8_t pin)
 
 uint8_t SimpleButton::checkEvent(uint8_t (*_event)(uint8_t event, uint8_t pin)) {
 uint8_t ret = 0;
-#if (0 != USE_TIMENOW)
+#if (0 != USE_MILLIS16)
 extern uint16_t millis16;
 uint16_t currentTime = millis16 & 0x3f0;
 #else

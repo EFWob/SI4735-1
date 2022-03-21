@@ -154,5 +154,57 @@ This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47X
 - The functionalities (of the buttones) can be altered by changing some [#defines](#configuration-of-button-functions) in **Config.h** 
 - The button timings itself (i. e. timeout to distinguish between longpress and doublepress) can be changed by altering some [#defines](#configuration-of-button-timings) in **SimpleButton.h**
 
-## Configuration of Button functions
+
 ## Configuration of Button timings
+General:
+- The button timings can be configured to personal likings and/or capabilities of the device used.
+- To support the configuration, uncomment the line __#define DEBUG__ in __Config.h__ for getting some informations on the button events on Serial monitor (@115200 baud)
+- If you also uncomment the line __#define DEBUG_BUTTONS_ONLY__ just below in __Config.h__ you will get slightly more verbose output on Serial (including the "clear names" of the buttons so you can check the correct pin assignment) and all radio functions will be turned off. The readout could be something like this:
+```
+22:35:44.253 -> Ev= 1 Pin=11 ("AGC") >>CLICK
+22:35:45.148 -> Ev= 1 Pin= 4 ("Mode") >>CLICK
+22:35:53.363 -> Ev= 1 Pin= 8 ("Band+") >>CLICK
+22:35:54.357 -> Ev=17 Pin= 7 ("Vol-") >>2CLICK
+22:35:56.809 -> Ev= 3 Pin=10 ("Step") >>LP start
+22:35:56.875 -> Ev= 7 Pin=10 ("Step") >>LP repeat
+22:35:56.909 -> Ev= 7 Pin=10 ("Step") >>LP repeat
+22:35:56.942 -> Ev= 7 Pin=10 ("Step") >>LP repeat
+22:35:57.008 -> Ev= 7 Pin=10 ("Step") >>LP repeat
+22:35:57.041 -> Ev= 7 Pin=10 ("Step") >>LP repeat
+22:35:57.107 -> Ev= 7 Pin=10 ("Step") >>LP repeat
+22:35:57.141 -> Ev= 7 Pin=10 ("Step") >>LP repeat
+22:35:57.207 -> Ev= 7 Pin=10 ("Step") >>LP repeat
+22:35:57.207 -> Ev=11 Pin=10 ("Step") >>LP done
+22:36:04.728 -> Ev=19 Pin=14 ("Encoder") >>2LP start
+22:36:04.761 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:04.827 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:04.861 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:04.927 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:04.960 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:04.993 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:05.060 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:05.093 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:05.159 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:05.192 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:05.259 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:05.292 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:05.358 -> Ev=23 Pin=14 ("Encoder") >>2LP repeat
+22:36:05.358 -> Ev=27 Pin=14 ("Encoder") >>2LP done
+22:40:23.294 -> Encoder turned right
+22:40:24.122 -> Encoder turned left
+```
+
+- The button timings self must be configured in **SimpleButton.h** (not Config.h)
+- All timings are compile-time settings (preprocessor __#defines__) that apply to all buttons
+- All timings are in milliseconds (ms) and must be defined as multiples of 16 with a maximum of 1008 (0, 16, 32, ..., 1008), other values are rounded down (0..15==0, 16..31==16, ... 1008..1023==1008) and wrapped around and calculated modulo 1024
+
+The essential timing definitions are:
+- __#define BUTTONTIME_PRESSDEBOUNCE      1*16__: for how long pin readout must be __LOW__ for the button considered to be pressed. This is only for debouncing the button. 
+- __#define BUTTONTIME_LONGPRESS1        20*16__: for how long (after debounce) a button needs to be pressed for being considered longpressed.
+- __#define BUTTONTIME_LONGPRESSREPEAT    3*16__: the timing distance to report repeated longpress events while a button is still pressed. This setting is the "timing base" for repeated **LP/2LP**-events like longpress at "Vol+". The speed of change (the volume up in that example) can be configurad as this setting (minimum) or a multiple thereof (or disabled alltogether, see [Button Configuration](#configuration-of-button-functions))
+- __#define BUTTONTIME_RELEASEDEBOUNCE    2*16__: for how long pin readout must be __HIGH__ for the button considered released again. This is only for debouncing the button. 
+- __#define BUTTONTIME_2CLICKWAIT        12*16__: for how long to wait (after a first single __CLICK__) to see if another button press follows direct (thus starting a __2CLICK__ or __2LP__ event). This timing is somewhat critical:
+    - if set too low, it might be impossible to generate __2CLICK__ events but two seperate __CLICK__ events are reported.
+    - setting it too high is also problematic, as the single __CLICK__ will only be reported afther this time has elapsed and/or __2CLICK__/__2LP__ events are reported even though in fact two single __CLICKs__ were intended.
+    
+## Configuration of Button functions

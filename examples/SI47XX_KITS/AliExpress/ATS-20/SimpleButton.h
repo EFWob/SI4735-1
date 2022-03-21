@@ -60,7 +60,7 @@ uint8_t SimpleButton::checkEvent( uint8_t (*eventHandler)(uint8_t eventId, uint8
                                                   //   BUTTONEVENT_2FIRSTLONGPRESS followed by (any number of) 
                                                   //   BUTTONEVENT_2LONGPRESS concluded by BUTTONEVENT_2LONGPRESSDONE
 
-#define BUTTONTIME_PRESSDEBOUNCE      3*16   // How long to debounce falling slope of pin (in ms), i. e. Button going to pressed
+#define BUTTONTIME_PRESSDEBOUNCE      1*16   // How long to debounce falling slope of pin (in ms), i. e. Button going to pressed
                                              // Zero is probably fine, if the button does not generate noise on changes (oscillates
                                              // between HIGH/LOW before going to a stable low reading) and you do not want to use 2Clicks.
 #define BUTTONTIME_LONGPRESS1        20*16   // Time (ms) after debounce a button needs to be pressed to be considered longpressed
@@ -134,7 +134,7 @@ Note that the values are somewhat bitcoded:
 #define BUTTONEVENT_UNDO_DOUBLE(x)          (x & ~_BV(4))
 
 
-#define USE_TIMENOW      1  // if defined (!= 0) an external variable uint16_t millis16; is used instead of millis()
+#define USE_MILLIS16      1  // if defined (!= 0) an external variable uint16_t millis16; is used instead of millis()
 
 class SimpleButton
 {

@@ -16,10 +16,10 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
   "V3.0.8F-By PU2CLR"
 };
 
-#define INTRO_LINEDELAY         1500   // Delay (ms) before showing the next line of intro screen. If set to 0, all lines defined in 
+#define INTRO_LINEDELAY         1200   // Delay (ms) before showing the next line of intro screen. If set to 0, all lines defined in 
                                        // introlines [] will be shown at once. This delay also applies to the last (normally 4th) line
 
-#define INTRO_ENDDELAY          4000   // Delay (ms) to display full intro screen after last line has been shown 
+#define INTRO_ENDDELAY          2000   // Delay (ms) to display full intro screen after last line has been shown 
 
 // If both INTRO_LINEDELAY and INTRO_ENDDELAY are set to 0, intro screen will not show at all!
 
@@ -28,7 +28,7 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                                        //   -if enabled, a longpress with the defined timeout will erase EEPROM
 
 #define INTRO_CLREEPROMDELAY    2000   // Delay (ms) to display "EEPROM erased" information if radio started with Encoder button pressed.
-                                       // (If button is pressed longer, message will stay untill button released)
+                                       // (If button is pressed longer, message will stay until button released)
                                        
 #define INTRO_SILENT            0      // If set to != 0, Audio will start only after intro screen is done 
                                         // (otherwise already audible during intro)
@@ -56,7 +56,7 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                              //  - New style display: both function name and parameter are inverted. Also for BFO setting
                              //       (in BFO-Mode frequency stays in not inverted display) 
 
-#define RDS_OFF            1 // Set to 0/1, if RDS should be disabled/enabled for FM at startup (RDS can be toggled ON/OFF in 
+#define RDS_OFF            0 // Set to 0/1, if RDS should be enabled/disabled for FM at startup (RDS can be toggled ON/OFF in 
                              // FM mode by shortpress on "Mode"-Button later)
 
 #define ENCODER_ENTER      1 // If defined != 0, and any command is selected, Shortpress on Encoder will end the currently selected 

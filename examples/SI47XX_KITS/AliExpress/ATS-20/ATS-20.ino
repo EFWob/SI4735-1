@@ -112,7 +112,7 @@ const uint16_t cmd_0x15_size = sizeof cmd_0x15;         // Array of lines where 
                          // uint16_t, maximum value is 0xffff of (uint16_t)65535 (dec) meaning a bit more than 65 seconds
 
 //const uint8_t app_id = 43; // Useful to check the EEPROM content before processing useful data
-const uint8_t app_id = 44;
+const uint8_t app_id = 45;
 
 const int eeprom_address = 0;
 uint16_t storeTime; // = millis();
@@ -122,8 +122,8 @@ const char bandModeDesc[] = {'F', 'L', 'U', 'A'};
 uint8_t currentMode = FM;
 uint8_t seekDirection = 1;
 
-uint16_t millis16 = 0;    // replacement for call to millis(), stores the time of starting the most recent loop.
-                         // can control timeouts of up to 70 seconds, which is enough for the cases used here 
+uint16_t millis16 = 0;    // replacement for call to millis(), stores the timestamp of the most recent call to loop().
+                          // can be used to control timeouts of up to 65 seconds, which is enough for the all use cases here 
 
 bool bfoOn = false;
 bool encoderMode = false;
@@ -139,10 +139,10 @@ bool cmdBw = false;       // if true, the encoder will control the bandwidth
 bool cmdBand = false;     // if true, the encoder will control the band
 bool cmdSoftMute = false; // if true, the encoder will control the Soft Mute attenuation
 bool cmdAvc = false;      // if true, the encoder will control Automatic Volume Control
-bool attDirty = false;    // if true, AGC/Att needs to be redrawn on screen
-
 
 bool cmdAnyOn = false;    // only true, if any of the cmdXxxx-flags above is true
+
+bool attDirty = false;    // if true, AGC/Att needs to be redrawn on screen
 
 uint8_t muteVolume = 0;   // restore volume for "un-mute"
 
@@ -150,21 +150,17 @@ uint8_t countRSSI = 0;
 
 int currentBFO = 0;
 
-// Button handlers for push buttons/encoder
-SimpleButton  btn_Bandwidth(BANDWIDTH_BUTTON);
+// Button handlers for push buttons/encoder button
 SimpleButton  btn_BandUp(BANDUP_BUTTON);
 SimpleButton  btn_BandDn(BANDDN_BUTTON);
 SimpleButton  btn_VolumeUp(VOLUMEUP_BUTTON);
 SimpleButton  btn_VolumeDn(VOLUMEDN_BUTTON);
-SimpleButton  btn_Encoder(ENCODER_BUTTON);
-SimpleButton  btn_AGC(AGC_BUTTON);
 SimpleButton  btn_Step(STEP_BUTTON);
+SimpleButton  btn_Bandwidth(BANDWIDTH_BUTTON);
+SimpleButton  btn_AGC(AGC_BUTTON);
 SimpleButton  btn_Mode(MODE_BUTTON);
 
-void showEncoderMode(void);
-void doBandwidth(int8_t v, bool show = true);
-void doStep(int8_t v);
-void doAttenuation(int8_t v);
+SimpleButton  btn_Encoder(ENCODER_BUTTON);
 
 uint16_t elapsedRSSI;
 
@@ -314,6 +310,13 @@ uint8_t volume = DEFAULT_VOLUME;
 Rotary encoder = Rotary(ENCODER_PIN_A, ENCODER_PIN_B);
 SI4735 si4735;
 
+// some forward declaration of functions
+void showEncoderMode(void);
+void doBandwidth(int8_t v, bool show = true);
+void doStep(int8_t v);
+void doAttenuation(int8_t v);
+
+// show n spaces on display starting at current cursor position
 void oledSpace(uint8_t n)
 {
   for(uint8_t i = 0;i < n;i++)
@@ -342,7 +345,6 @@ void useBand(bool show = true)
     bwFlag = &bwIdxFM;
     bwMax = BW_MAX_FM;
     bwDefault = BW_DEFAULT_FM;
-    //si4735.setFmBandwidth(bandwidthFM[bwIdxFM].idx);
   }
   else
   {
@@ -358,15 +360,6 @@ void useBand(bool show = true)
       si4735.setSsbSoftMuteMaxAttenuation(0); // Disable Soft Mute for SSB
       bwIdxSSB = band[bandIdx].bandwidthIdx;
       bwIdxSSB = (bwIdxSSB > BW_MAX_SSB) ? BW_DEFAULT_SSB : bwIdxSSB;
-      //Serial.print("useBand() bwIdxSSB= ");Serial.println(bwIdxSSB);
-      /*
-      si4735.setSSBAudioBandwidth(bandwidthSSB[bwIdxSSB].idx);
-      // If audio bandwidth selected is about 2 kHz or below, it is recommended to set Sideband Cutoff Filter to 0.
-      if (bandwidthSSB[bwIdxSSB].idx == 0 || bandwidthSSB[bwIdxSSB].idx == 4 || bandwidthSSB[bwIdxSSB].idx == 5)
-        si4735.setSBBSidebandCutoffFilter(0);
-      else
-        si4735.setSBBSidebandCutoffFilter(1);
-      */
       si4735.setSSBBfo(currentBFO);
       bwFlag = &bwIdxSSB;
       bwMax = BW_MAX_SSB;
@@ -380,7 +373,6 @@ void useBand(bool show = true)
       si4735.setAmSoftMuteMaxAttenuation(smIdx); // // Disable Soft Mute for AM
       bwIdxAM = band[bandIdx].bandwidthIdx;
       bwIdxAM = (bwIdxAM > BW_MAX_AM) ? BW_DEFAULT_AM : bwIdxAM;
-      //si4735.setBandwidth(bandwidthAM[bwIdxAM].idx, 1);
       bfoOn = false;
       bwFlag = &bwIdxAM;
       bwMax = BW_MAX_AM;
@@ -389,8 +381,6 @@ void useBand(bool show = true)
     si4735.setSeekAmLimits(band[bandIdx].minimumFreq, band[bandIdx].maximumFreq);                                       // Consider the range all defined current band
     si4735.setSeekAmSpacing((tabStep[band[bandIdx].currentStepIdx] > 10) ? 10 : tabStep[band[bandIdx].currentStepIdx]); // Max 10kHz for spacing
   }
-  //delay(100);
-  //oled.clear();
   previousFrequency = currentFrequency = band[bandIdx].currentFreq;
   idxStep = band[bandIdx].currentStepIdx;
   doBandwidth(0, false);
@@ -423,12 +413,11 @@ void loadSSB(bool show = true)
   delay(50);
   si4735.downloadCompressedPatch(ssb_patch_content, size_content, cmd_0x15, cmd_0x15_size);
   bwIdxSSB = (bwIdxSSB > BW_MAX_SSB) ? BW_DEFAULT_SSB : bwIdxSSB;
-  //Serial.print("loadSSB bwIdxSSB=");Serial.println(bwIdxSSB);
   si4735.setSSBConfig(bandwidthSSB[bwIdxSSB].idx, 1, 0, 1, 0, 1);
   si4735.setI2CStandardMode();
   ssbLoaded = true;
-  // oled.clear();
-  cleanBfoRdsInfo();
+  if (show)
+    cleanBfoRdsInfo();
 }
 
 
@@ -437,48 +426,44 @@ void loadSSB(bool show = true)
 */
 void readAllReceiverInformation()
 {
-  int addr_offset;
+  int addr_offset = eeprom_address;
   int bwIdx;
-  volume = EEPROM.read(eeprom_address + 1); // Gets the stored volume;
-  bandIdx = EEPROM.read(eeprom_address + 2);
-  currentMode = EEPROM.read(eeprom_address + 3);
-  currentBFO = EEPROM.read(eeprom_address + 4) << 8;
-  currentBFO |= EEPROM.read(eeprom_address + 5);
-
-  addr_offset = 6;
+  
+  volume = EEPROM.read(++addr_offset); // Gets the stored volume;
+  bandIdx = EEPROM.read(++addr_offset);
+  currentMode = EEPROM.read(++addr_offset);
+  currentBFO = EEPROM.read(++addr_offset) << 8;
+  currentBFO |= EEPROM.read(++addr_offset);
+  rdsOff = EEPROM.read(++addr_offset);
+/*
+  Serial.print("REE V:");Serial.print(volume);  
+  Serial.print(" band:");Serial.print(bandIdx);  
+  Serial.print(" mod:");Serial.print(currentMode);
+  Serial.print(" BFO:");Serial.print(currentBFO);
+  Serial.print(" RDS:");Serial.println(rdsOff);
+*/  
   for (int i = 0; i <= lastBand; i++)
   {
-    band[i].currentFreq = EEPROM.read(addr_offset++) << 8;
-    band[i].currentFreq |= EEPROM.read(addr_offset++);
-    band[i].currentStepIdx = EEPROM.read(addr_offset++);
-    band[i].bandwidthIdx = EEPROM.read(addr_offset++);
+    band[i].currentFreq = EEPROM.read(++addr_offset) << 8;
+    band[i].currentFreq |= EEPROM.read(++addr_offset);
+    band[i].currentStepIdx = EEPROM.read(++addr_offset);
+    band[i].bandwidthIdx = EEPROM.read(++addr_offset);
   }
 
-  //previousFrequency = currentFrequency = band[bandIdx].currentFreq;
   idxStep = tabStep[band[bandIdx].currentStepIdx];
   bwIdx = band[bandIdx].bandwidthIdx;
 
   if (currentMode == LSB || currentMode == USB)
   {
     loadSSB(false);
-    /*
-    si4735.setSSBAudioBandwidth(bandwidthSSB[bwIdxSSB].idx);
-    // If audio bandwidth selected is about 2 kHz or below, it is recommended to set Sideband Cutoff Filter to 0.
-    if (bandwidthSSB[bwIdxSSB].idx == 0 || bandwidthSSB[bwIdxSSB].idx == 4 || bandwidthSSB[bwIdxSSB].idx == 5)
-      si4735.setSBBSidebandCutoffFilter(0);
-    else
-      si4735.setSBBSidebandCutoffFilter(1);
-    */
   }
   else if (currentMode == AM)
   {
     bwIdxAM = (bwIdx > BW_MAX_AM) ? BW_DEFAULT_AM : bwIdx;
-    //si4735.setBandwidth(bandwidthAM[bwIdxAM].idx, 1);
   }
   else
   {
     bwIdxFM = (bwIdx > BW_MAX_FM) ? BW_DEFAULT_FM : bwIdx;
-    //si4735.setFmBandwidth(bandwidthFM[bwIdxFM].idx);
   }
 }
 
@@ -535,7 +520,7 @@ uint16_t stateTime;
 #if (((0 == INTRO_LINEDELAY) && (0 == INTRO_ENDDELAY)) || (0 == INTRO_BEFOREDONE))
           introState = INTRO_BEFOREDONE;
 #else
-          introState = INTRO_SHOWLINE;
+          introState = (0 == NUM_INTROLINES)?INTRO_BEFOREDONE:INTRO_SHOWLINE;
 #endif
         break;
       case INTRO_SHOWLINE:
@@ -618,7 +603,8 @@ uint16_t stateTime;
         introState = INTRO_DONE;
         break;
       default:
-        introState = INTRO_DONE;        
+        // Can not happen...
+        //introState = INTRO_DONE;        
         break;
     }
   }
@@ -632,8 +618,6 @@ void setup()
   pinMode(ENCODER_PIN_A, INPUT_PULLUP);
   pinMode(ENCODER_PIN_B, INPUT_PULLUP);
   // Encoder interrupt
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), rotaryEncoder, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), rotaryEncoder, CHANGE);
   oled.begin();
   oled.clear();
   oled.on();
@@ -650,6 +634,8 @@ void setup()
   oled.print("Monitor for button");
   oled.setCursor(0,3);
   oled.print("events.");
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), rotaryEncoder, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), rotaryEncoder, CHANGE);
   
   return;
 #endif
@@ -684,7 +670,8 @@ void setup()
     
   // end Splash
 
-  //previousFrequency = currentFrequency;// =  si4735.getFrequency();
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), rotaryEncoder, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), rotaryEncoder, CHANGE);
 
 }
 
@@ -695,6 +682,7 @@ void setup()
 // DEBUG must be defined for the function to have any effect
 #if defined(DEBUG)
 uint8_t buttonEvent(uint8_t event, uint8_t pin) {
+
   Serial.print("Ev=");if (event < 10) Serial.print(' ');Serial.print(event);
   Serial.print(" Pin=");if (pin < 10) Serial.print(' ');Serial.print(pin);
 #if defined(DEBUG_BUTTONS_ONLY)
@@ -714,20 +702,18 @@ struct {
     {ENCODER_BUTTON, "Encoder"}
   };
 #define KNOWN_BUTTONS (sizeof(pinNames) / sizeof(pinNames[0]))
-  Serial.print(" (");
+  Serial.print(" (\"");
   int i;
   for(i = 0;i < KNOWN_BUTTONS;i++)
     if (pinNames[i].pin == pin)
       break;
   if (i < KNOWN_BUTTONS)
   {
-    Serial.print('"');
     Serial.print(pinNames[i].name);
-    Serial.print('\"');
   }
   else
-    Serial.print("???undefined???");
-  Serial.print(") ");
+    Serial.print("???");
+  Serial.print("\") ");
 #endif  
   
   Serial.print(">>");
@@ -750,8 +736,9 @@ struct {
   else if (event == BUTTONEVENT_2CLICK)
     Serial.println("2CLICK");
   else
-    Serial.println("UNEXPECTED!!!!");
+    Serial.println("???");
   return event;
+
 }
 
 #else
@@ -778,7 +765,7 @@ bool direction = (BANDUP_BUTTON == pin);
 #ifdef DEBUG
   buttonEvent(event, pin);
 #endif
-
+  resetEepromDelay();
 #if BANDSWITCH1STEP_DELAY != 0
   if (BUTTONEVENT_ISLONGPRESS(event))
     if (BUTTONEVENT_ISDOUBLE(event))
@@ -918,6 +905,9 @@ uint8_t volumeEvent(uint8_t event, uint8_t pin) {
 #ifdef DEBUG
   buttonEvent(event, pin);
 #endif
+
+  resetEepromDelay();
+
 #if (0 != AVC_2CLICKENABLE)
   if (VOLUMEDN_BUTTON == pin)
     if (BUTTONEVENT_ISDOUBLE(event))
@@ -1009,8 +999,10 @@ uint8_t stepEvent(uint8_t event, uint8_t pin) {
 #ifdef DEBUG
   buttonEvent(event, pin);
 #endif
+
   if (FM == currentMode)
     return BUTTON_IDLE;
+  resetEepromDelay();
 #if (0 != STEP_2CLICKENABLE)
   if (BUTTONEVENT_ISDOUBLE(event))
   {
@@ -1067,6 +1059,10 @@ uint8_t bandwidthEvent(uint8_t event, uint8_t pin) {
 #ifdef DEBUG
   buttonEvent(event, pin);
 #endif
+
+  resetEepromDelay();
+
+
 #if (0 != BANDWIDTH_2CLICKENABLE)
   if (BUTTONEVENT_ISDOUBLE(event))
   {
@@ -1119,6 +1115,7 @@ uint8_t agcEvent(uint8_t event, uint8_t pin) {
 #ifdef DEBUG
   buttonEvent(event, pin);
 #endif
+  resetEepromDelay();
 #if (0 != ENCODER_MUTEDELAY)
   if (encoderMode)
     if (BUTTONEVENT_ISDOUBLE(event))
@@ -1196,7 +1193,7 @@ uint8_t modeEvent(uint8_t event, uint8_t pin) {
 #ifdef DEBUG
   buttonEvent(event, pin);  
 #endif
-
+  resetEepromDelay();
 #if (0 != ENCODERMODE_DELAY)
 static uint8_t count = 0;
 #endif
@@ -1249,6 +1246,7 @@ static uint8_t count = 0;
       else
       {
         rdsOff = !rdsOff;
+        previousFrequency = 0;
         cleanBfoRdsInfo();
       }
     }  
@@ -1260,6 +1258,9 @@ uint8_t encoderEvent(uint8_t event, uint8_t pin) {
 #ifdef DEBUG
   buttonEvent(event, pin);
 #endif
+
+  resetEepromDelay();
+
   if (BUTTONEVENT_SHORTPRESS == event)
   {
 #if (0 != ENCODER_ENTER)
@@ -1355,15 +1356,22 @@ void rotaryEncoder()
 */
 void saveAllReceiverInformation()
 {
-  int addr_offset;
-  EEPROM.update(eeprom_address, app_id);                 // stores the app id;
-  EEPROM.update(eeprom_address + 1, muteVolume?muteVolume:si4735.getVolume()); // stores the current Volume
-  EEPROM.update(eeprom_address + 2, bandIdx);            // Stores the current band
-  EEPROM.update(eeprom_address + 3, currentMode);        // Stores the current Mode (FM / AM / SSB)
-  EEPROM.update(eeprom_address + 4, currentBFO >> 8);
-  EEPROM.update(eeprom_address + 5, currentBFO & 0XFF);
+  int addr_offset = eeprom_address;
+  EEPROM.update(addr_offset++, app_id);                 // stores the app id;
+  EEPROM.update(addr_offset++, muteVolume?muteVolume:si4735.getVolume()); // stores the current Volume
+  EEPROM.update(addr_offset++, bandIdx);            // Stores the current band
+  EEPROM.update(addr_offset++, currentMode);        // Stores the current Mode (FM / AM / SSB)
+  EEPROM.update(addr_offset++, currentBFO >> 8);
+  EEPROM.update(addr_offset++, currentBFO & 0XFF);
+  EEPROM.update(addr_offset++, rdsOff);
+/*
+  Serial.print("SEE V:");Serial.print(muteVolume?muteVolume:si4735.getVolume());
+  Serial.print(" band:");Serial.print(bandIdx);
+  Serial.print(" mod:");Serial.print(currentMode);
+  Serial.print(" BFO:");Serial.print(currentBFO);
+  Serial.print(" RDS:");Serial.println(rdsOff);
+*/  
 
-  addr_offset = 6;
   band[bandIdx].currentFreq = currentFrequency;
 
   for (int i = 0; i <= lastBand; i++)
@@ -1380,7 +1388,7 @@ void saveAllReceiverInformation()
 */
 void resetEepromDelay()
 {
-  storeTime = millis16;//millis();
+  storeTime = millis16;
   previousFrequency = 0;
 }
 
@@ -1783,13 +1791,13 @@ char oldBuffer[15];
 void cleanBfoRdsInfo()
 {
   oled.setCursor(0, 2);
-  oledSpace(20);
   if ((currentMode == FM) && rdsOff)
   {
-    oled.setCursor(0, 2);
-    oled.print("RDS off");
+    oled.print("RDS off             ");
   }
-  //oled.print("                    ");
+  else
+    oledSpace(20);
+
 }
 
 /*
@@ -2135,8 +2143,6 @@ void doEncoderAction()
     {
       currentBFO = (encoderCount == 1) ? (currentBFO + currentBFOStep) : (currentBFO - currentBFOStep);
       si4735.setSSBBfo(currentBFO);
-      resetEepromDelay();
-      //previousFrequency = 0; // Forces eeprom update
       showBFO();
     }
     else
