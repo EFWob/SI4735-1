@@ -790,7 +790,7 @@ bool direction = (BANDUP_BUTTON == pin);
       return BUTTON_IDLE;
     }
 #endif
-#if ENCODERMODE_DELAY != 0
+#if MODE_DELAY != 0
   if (encoderMode)
   {
     if (BUTTONEVENT_ISDOUBLE(event))
@@ -804,10 +804,10 @@ bool direction = (BANDUP_BUTTON == pin);
         count = 0;
       if (BUTTONEVENT_LONGPRESSDONE != event)
       {
-#if (0 != ENCODERMODE_SLOWDOWN)
+#if (0 != ESM_SLOWDOWN)
         if (!count++)
           encoderCount = direction?1:-1;
-        count = count % ENCODERMODE_SLOWDOWN;
+        count = count % ESM_SLOWDOWN;
 #else
         encoderCount = direction?1:-1;
 #endif       
@@ -818,7 +818,7 @@ bool direction = (BANDUP_BUTTON == pin);
       event = BUTTONEVENT_UNDO_DOUBLE(event);
   }
 #endif
-#if (0 != SOFTMUTE_2CLICKENABLE)
+#if (0 != BANDDN_2CLICKENABLE)
   if (BANDDN_BUTTON == pin)
   {
     if (BUTTONEVENT_2CLICK == event)
@@ -839,7 +839,7 @@ bool direction = (BANDUP_BUTTON == pin);
     }
   }
 #endif
-#if (0 != BAND_2CLICKENABLE)
+#if (0 != BANDUP_2CLICKENABLE)
   if (BANDUP_BUTTON == pin)
   {
     if (BUTTONEVENT_2CLICK == event)
@@ -908,7 +908,7 @@ uint8_t volumeEvent(uint8_t event, uint8_t pin) {
 
   resetEepromDelay();
 
-#if (0 != AVC_2CLICKENABLE)
+#if (0 != VOLUMEDN_2CLICKENABLE)
   if (VOLUMEDN_BUTTON == pin)
     if (BUTTONEVENT_ISDOUBLE(event))
     {
@@ -930,7 +930,7 @@ uint8_t volumeEvent(uint8_t event, uint8_t pin) {
           }
           else 
           {
-            count = AVC_2CLICKENABLE;
+            count = VOLUMEDN_2CLICKENABLE;
             if (90 == avcIdx)
               direction = -2;
             else if (12 == avcIdx)
@@ -941,7 +941,7 @@ uint8_t volumeEvent(uint8_t event, uint8_t pin) {
         }
         else if (BUTTONEVENT_2LONGPRESS == event)
           count++;
-        if (AVC_2CLICKENABLE == count)
+        if (VOLUMEDN_2CLICKENABLE == count)
         {
           uint8_t x = avcIdx + direction;
           count = 0;
@@ -1116,7 +1116,7 @@ uint8_t agcEvent(uint8_t event, uint8_t pin) {
   buttonEvent(event, pin);
 #endif
   resetEepromDelay();
-#if (0 != ENCODER_MUTEDELAY)
+#if (0 != ENCODER_DELAY)
   if (encoderMode)
     if (BUTTONEVENT_ISDOUBLE(event))
       event = BUTTONEVENT_UNDO_DOUBLE(event);
@@ -1194,24 +1194,24 @@ uint8_t modeEvent(uint8_t event, uint8_t pin) {
   buttonEvent(event, pin);  
 #endif
   resetEepromDelay();
-#if (0 != ENCODERMODE_DELAY)
+#if (0 != MODE_DELAY)
 static uint8_t count = 0;
 #endif
 
 
   if (BUTTONEVENT_FIRSTLONGPRESS == event)
   {
-#if (0 != ENCODERMODE_DELAY)
+#if (0 != MODE_DELAY)
     count = 0;
 #else
     event = BUTTONEVENT_SHORTPRESS;
 #endif
   }
-#if (0 != ENCODERMODE_DELAY)
+#if (0 != MODE_DELAY)
   else if (BUTTONEVENT_LONGPRESS == event)
   {
-    if (count < ENCODERMODE_DELAY)
-      if (++count == ENCODERMODE_DELAY)
+    if (count < MODE_DELAY)
+      if (++count == MODE_DELAY)
       {
         encoderMode = !encoderMode;
         showEncoderMode();
@@ -1263,7 +1263,7 @@ uint8_t encoderEvent(uint8_t event, uint8_t pin) {
 
   if (BUTTONEVENT_SHORTPRESS == event)
   {
-#if (0 != ENCODER_ENTER)
+#if (0 != ENCODER_CANCEL)
     if (cmdAnyOn)
     {
       disableCommand(NULL, NULL); // disable all command buttons
@@ -1307,11 +1307,11 @@ uint8_t encoderEvent(uint8_t event, uint8_t pin) {
   }    
 
 
-#if (0 != ENCODER_MUTEDELAY)
+#if (0 != ENCODER_DELAY)
   static uint8_t waitBeforeMute;
   if (BUTTONEVENT_FIRSTLONGPRESS == event)
   {
-    waitBeforeMute = ENCODER_MUTEDELAY;
+    waitBeforeMute = ENCODER_DELAY;
   }
   else if ((BUTTONEVENT_LONGPRESS == event) && (0 != waitBeforeMute))
     if (0 == --waitBeforeMute)

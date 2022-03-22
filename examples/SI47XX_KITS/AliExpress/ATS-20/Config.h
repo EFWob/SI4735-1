@@ -5,7 +5,7 @@
 //#define DEBUG_BUTTONS_ONLY    // if defined (in addition to DEBUG), only button events will be reported on Serial, no radio function
                               // (use this to adjust the BUTTONTIME_XXXX-defines in include file "SimpleButton.h" to your liking)
 
-// INTRO-CONFIG
+// INTROCONFIG section
 
 char* introlines[] =   // Defines the intro lines to be shown at startup. At most 4 entries can be defined (excess will be ignored)
                               // If defined as empty array (introlines[] = {};), no intro screen will be shown
@@ -33,7 +33,7 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
 #define INTRO_SILENT            0      // If set to != 0, Audio will start only after intro screen is done 
                                         // (otherwise already audible during intro)
 
-// FUNCTION-CONFIG
+// FUNCTIONCONFIG section
 /* Some of the defines refer to functions that can be reached by longpress on a specific button. The timings described here are the
  *  default timings as defined in include file "SimpleButton.h"-if you changed the settings there, the example timings described below
  *  will change of course according to your settings there.
@@ -44,57 +44,6 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
  *  behave the same as with simple click/longpress.
  */
 
-#define DEFAULT_VOLUME     45 // change it for your favorite sound volume (only used, if EEPROM is erased)
-
-#define DEFAULT_BAND lastBand // default band to switch to, if no last station info is stored to EEPROM. 
-                              //   -must be a valid index into the band table band[] (see below)
-                              //   -can be set to "lastBand" (w/o the quotation marks!) to address the last band defined in the table
-
-#define DISPLAY_OLDSTYLE   0 // Set to != 0 to use old style display
-                             //  - Old style display: in BFO-Mode, the frequency is inverted. For every other function, the
-                             //       function name preceeding the changing parameter is inverted (but not the parameter itself)
-                             //  - New style display: both function name and parameter are inverted. Also for BFO setting
-                             //       (in BFO-Mode frequency stays in not inverted display) 
-
-#define RDS_OFF            0 // Set to 0/1, if RDS should be enabled/disabled for FM at startup (RDS can be toggled ON/OFF in 
-                             // FM mode by shortpress on "Mode"-Button later)
-
-#define ENCODER_ENTER      1 // If defined != 0, and any command is selected, Shortpress on Encoder will end the currently selected 
-                             // command immediately (before default timeout of 4 seconds)
-                                     
-#define ENCODER_SEARCH     1 // If defined != 0, shortpress on encoder will start search (in AM/FM-Mode) (overriden by ENCODER_ENTER
-                             // if applicable)
-                                     
-#define ENCODER_MUTEDELAY  2 // Controls how long the encoder button needs to be longpressed for Mute functionality:
-                             //    -must be uint8_t (i. e. between 0 and 255)
-                             //    -if Zero, Encoder longpresses will be ignored (treated same as shortpress)
-                             //    -any other number 'x' specifies the timeout to be (roughly, in ms)
-                             //       BUTTONTIME_LONGPRESS1 + x * BUTTONTIME_LONGPRESSREPEAT i. e.
-                             //       320 + x * 48 if you did not change the default settings in "SimpleButton.h"
-                             //    - with a setting of 2, this is roughly 400 ms
-
-#define ENCODERMODE_DELAY  1 // Controls "EncoderSimulationMode" ("ESM"):
-                             //    -if enabled (>0), "EncoderSimulationMode" can be toggled by a longpress on button "Mode"
-                             //    -in "ESM" a short/longpress to Band+ and Band- will be the same as rotating the encoder
-                             //       right/left
-                             //    -must be uint8_t (i. e. between 0 and 255)
-                             //    -to disable "ESM", set this to Zero (0)
-                             //    -any other number 'x' specifies (in ms), how long "Mode" must be pressed to toggle EncoderMode
-                             //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
-                             //    -with a setting of 2, this is roughly 400 ms 
-                             //    -in "ESM":
-                             //       - The encoder is not disabled, but simulated by buttons in addition
-                             //       - Click or Longpress on AGC will be like pressing the Encoder
-                             //       - Click or Longpress on "Band+"/"Band-" will be the same as rotating the encoder
-                             //       - DoubleClick (instead of click) on "Band+" will start "Band-Change-Function" for 4 secs
-                             //       - DoubleClick (instead of click) on "Band-" will start "SoftMute-Function" for 4 secs
-                             //        -DoubleClick/Longclick on "AGC" allows for AGC-Settings
-
-#define ENCODERMODE_SLOWDOWN 0 // Controls how fast repeated longpress on "Mode+"/"Mode-" will be translated into Encoder rotations
-                               //   - must be uint_8, i. e. between 0 and 255
-                               //   - time between simulated encoder rotations is (x + 1) * BUTTONTIME_LONGPRESSREPEAT (defined in 
-                               //     "SimpleButton.h", defaults to roughly 50 ms)              
-              
 #define BAND_DELAY        2  // Controls how long the BAND+/- buttons need to be longpressed for functionality:
                              //    -must be uint8_t (i. e. between 0 and 255)
                              //    -if Zero, longpresses will be ignored (will be same as shortpress)
@@ -104,8 +53,6 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                              //      (however, since band switching/scree updating consumes some time, it is OK to leave at 1)
                              //     (if you did not change the default settings in "SimpleButton.h")
 
-#define BAND_2CLICKENABLE 1  // If defined != 0:
-                             //     - DOUBLE-CLICK on "Band+"-button will toggle bandIdx between first and last band
 
 #define BANDSWITCH1STEP_DELAY 1  // Controls "Next/Previous-Band" function:
                                  //    - must be uint8_t (i. e. between 0 and 255)
@@ -117,9 +64,11 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                                  //    -with a setting of 1, this is roughly 400 ms 
                                  //    -if enabled, function is anabled in both "EncoderMode" and "Normal Mode"
 
-#define SOFTMUTE_2CLICKENABLE 1  // If defined != 0:
-                                 //     - DOUBLE-CLICK on SoftMute("Band-")-button will toggle between min/max Softmute
+#define BANDUP_2CLICKENABLE 1  // If defined != 0:
+                               //     - DOUBLE-CLICK on "Band+"-button will toggle bandIdx between first and last band
 
+#define BANDDN_2CLICKENABLE 1  // If defined != 0:
+                               //     - DOUBLE-CLICK on SoftMute("Band-")-button will toggle between min/max Softmute
 
 #define VOLUME_DELAY          1  // Controls how long the Vol+/- buttons need to be longpressed for functionality:
                                  //    -must be uint8_t (i. e. between 0 and 255)
@@ -129,14 +78,13 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                                  //    -with a setting of 1 (the best IMHO), this is roughly 50 ms 
                                  //     (if you did not change the default settings in "SimpleButton.h")
                                      
-#define AVC_2CLICKENABLE    1  // If defined != 0:
+#define VOLUMEDN_2CLICKENABLE    1  // If defined != 0:
                                //     - DOUBLE-CLICK on AVC(==Vol-)-button will toggle betwin Min, Default and Max AVC (12/38/90)
-                               //     - DOUBLE-LONGCLICK AVC(==Vol-)-button will "glide" between Min/Max AVC (direction changed at any press)
+                               //     - DOUBLE-LONGCLICK AVC(==Vol-)-button will "slide" between Min/Max AVC (direction changed at any press)
                                //     - the number defines the timeout between value changes (in ms) as 
                                //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
                                //     - with a setting of 1 (the best IMHO), this is roughly 50 ms 
                                //       (if you did not change the default settings in "SimpleButton.h")
-
 
 #define STEP_DELAY          6  // Controls how long the Step button needs to be longpressed for functionality:
                                //    -must be uint8_t (i. e. between 0 and 255)
@@ -175,18 +123,77 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                                //     - DOUBLE-CLICK on AGC-button will toggle between Min and Max Attenuation (12/90)
                                //     - DOOUBLE_LONGCLICK on AGC-Button will set AGC
 
+#define MODE_DELAY        1 // Controls "EncoderSimulationMode" ("ESM") (LP on "Mode"-Button):
+                             //    -if enabled (>0), "EncoderSimulationMode" can be toggled by a longpress on button "Mode"
+                             //    -in "ESM" a short/longpress to Band+ and Band- will be the same as rotating the encoder
+                             //       right/left
+                             //    -must be uint8_t (i. e. between 0 and 255)
+                             //    -to disable "ESM", set this to Zero (0)
+                             //    -any other number 'x' specifies (in ms), how long "Mode" must be pressed to toggle EncoderMode
+                             //       x * BUTTONTIME_LONGPRESSREPEAT , with the first change happening after BUTTONTIME_LONGPRESS1
+                             //    -with a setting of 2, this is roughly 400 ms 
+                             //    -in "ESM":
+                             //       - The encoder is not disabled, but simulated by buttons in addition
+                             //       - Click or Longpress on AGC will be like pressing the Encoder
+                             //       - Click or Longpress on "Band+"/"Band-" will be the same as rotating the encoder
+                             //       - DoubleClick (instead of click) on "Band+" will start "Band-Change-Function" for 4 secs
+                             //       - DoubleClick (instead of click) on "Band-" will start "SoftMute-Function" for 4 secs
+                             //        -DoubleClick/Longclick on "AGC" allows for AGC-Settings
 
+
+#define ESM_SLOWDOWN 0 // Controls how fast repeated longpress on "Mode+"/"Mode-" will be translated into Encoder rotations
+                               //   - must be uint_8, i. e. between 0 and 255
+                               //   - time between simulated encoder rotations is (x + 1) * BUTTONTIME_LONGPRESSREPEAT (defined in 
+                               //     "SimpleButton.h", defaults to roughly 50 ms)              
+
+#define ENCODER_DELAY  2 // Controls how long the encoder button needs to be longpressed for Mute functionality:
+                             //    -must be uint8_t (i. e. between 0 and 255)
+                             //    -if Zero, Encoder longpresses will be ignored (treated same as shortpress)
+                             //    -any other number 'x' specifies the timeout to be (roughly, in ms)
+                             //       BUTTONTIME_LONGPRESS1 + x * BUTTONTIME_LONGPRESSREPEAT i. e.
+                             //       320 + x * 48 if you did not change the default settings in "SimpleButton.h"
+                             //    - with a setting of 2, this is roughly 400 ms
+
+#define ENCODER_CANCEL      1 // If defined != 0, and any command is selected, Shortpress on Encoder will end the currently selected 
+                             // command immediately (before default timeout of 4 seconds)
+                                     
+#define ENCODER_SEARCH     1 // If defined != 0, shortpress on encoder will start search (in AM/FM-Mode) (overriden by ENCODER_ENTER
+                             // if applicable)
+                                     
+
+
+//MISCCONFIG section
+
+#define DEFAULT_VOLUME     45 // change it for your favorite sound volume (only used, if EEPROM is erased)
+
+#define DEFAULT_BAND lastBand // default band to switch to, if no last station info is stored to EEPROM. 
+                              //   -must be a valid index into the band table band[] (see below)
+                              //   -can be set to "lastBand" (w/o the quotation marks!) to address the last band defined in the table
+
+#define DISPLAY_OLDSTYLE   0 // Set to != 0 to use old style display
+                             //  - Old style display: in BFO-Mode, the frequency is inverted. For every other function, the
+                             //       function name preceeding the changing parameter is inverted (but not the parameter itself)
+                             //  - New style display: both function name and parameter are inverted. Also for BFO setting
+                             //       (in BFO-Mode frequency stays in not inverted display) 
+
+#define RDS_OFF            0 // Set to 0/1, if RDS should be enabled/disabled for FM at startup (RDS can be toggled ON/OFF in 
+                             // FM mode by shortpress on "Mode"-Button later)
+
+
+
+              
+// PINCONFIG section
 // Pin definitions
 
 // Buttons controllers
-#define MODE_BUTTON 4      // Switch MODE (Am/LSB/USB)
-#define BANDWIDTH_BUTTON 5 // Used to select the banddwith.
-#define VOLUMEUP_BUTTON 6    // Volume Up
-#define VOLUMEDN_BUTTON 7     // **** Use thi button to implement a new function
 #define BANDUP_BUTTON 8      // Next band
 #define BANDDN_BUTTON 9     // **** Use thi button to implement a new function
-#define AGC_BUTTON 11      // Switch AGC ON/OF
+#define VOLUMEUP_BUTTON 6    // Volume Up
+#define VOLUMEDN_BUTTON 7     // **** Use thi button to implement a new function
 #define STEP_BUTTON 10     // Used to select the increment or decrement frequency step (see tabStep)
+#define BANDWIDTH_BUTTON 5 // Used to select the banddwith.
+#define AGC_BUTTON 11      // Switch AGC ON/OF
+#define MODE_BUTTON 4      // Switch MODE (Am/LSB/USB)
 #define ENCODER_BUTTON 14  // Used to select the enconder control (BFO or VFO) and SEEK function on AM and FM modes
 
 // OLED Diaplay constants

@@ -91,6 +91,7 @@ This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47X
 
 - assigned to "MODE":
   - **CLICK**/**2CLICK**: in FM-Mode: toggle RDS off/on, else toggle between AM/LSB/USB-mode
+    - the RDS setting applies to all FM bands and is stored to EEPROM
   - **LP(once)**/**2LP(once)**: toggle "Encoder-Simulation-Mode" (see below)
 
 - assigned to "Rotary-Encoder-Button" (at normal play):
@@ -197,6 +198,7 @@ General:
 - The button timings self must be configured in **SimpleButton.h** (not Config.h)
 - All timings are compile-time settings (preprocessor __#defines__) that apply to all buttons
 - All timings are in milliseconds (ms) and must be defined as multiples of 16 with a maximum of 1008 (0, 16, 32, ..., 1008), other values are rounded down (0..15==0, 16..31==16, ... 1008..1023==1008) and wrapped around and calculated modulo 1024
+- Timings are not guaranteed, as especially an Arduino Nano is not a RT system, but they are close enough :-)
 
 The essential timing definitions are:
 - __#define BUTTONTIME_PRESSDEBOUNCE      1*16__: for how long pin readout must be __LOW__ for the button considered to be pressed. This is only for debouncing the button. 
@@ -206,5 +208,75 @@ The essential timing definitions are:
 - __#define BUTTONTIME_2CLICKWAIT        12*16__: for how long to wait (after a first single __CLICK__) to see if another button press follows direct (thus starting a __2CLICK__ or __2LP__ event). This timing is somewhat critical:
     - if set too low, it might be impossible to generate __2CLICK__ events but two seperate __CLICK__ events are reported.
     - setting it too high is also problematic, as the single __CLICK__ will only be reported afther this time has elapsed and/or __2CLICK__/__2LP__ events are reported even though in fact two single __CLICKs__ were intended.
-    
+
+There is another setting in **SimpleButton.h** that does not define the timings but enables (default) or disables double-click events:
+- __#define BUTTON_2CLICKENABLED 1__: if this define is set to 0, no __2CLICK__ and/or __2LP__ events will be generated. A double-click will result in two __CLICKs__ and a click followed by a longpress will result in __CLICK__ and __LP__.
+
 ## Configuration of Button functions
+
+Basically, the "old" behaviour is represented in this version by a single __CLICK__ on the button. All extended button functions are linked to __LP__ (including __LP(once)__) or double-click events (__2CLICK__, __2LP__, __2LP(once)__).
+
+With the following defines, the extended functions can be adjusted to your liking (enabled or disabled or timings for __LPx__-events can be adjusted). You don't need to program direct but just change some __#defines__ in **Config.h** before recompiling/flashing. Within **Config.h**, search for the __FUNCTIONCONFIG__ section.
+
+Please keep in mind, that the base timing for "repeating" __LP__-events is defined by __#define BUTTONTIME_LONGPRESSREPEAT__ in **SimpleButton.h** as described [above](#configuration-of-button-timings).
+
+The following applies in general:
+- each functions is controlled by a number, that number must be of uint8-type (valid range is 0..255)
+- the timings are rough estimates (its not a realtime system) and might be longer if the device is busy
+
+The following should apply in general (I might have not tested all variants):
+- if a function is disabled, the associated click-event (__2CLICK__, __LP__ etc.) will be treated as a normal __CLICK__
+
+- __#define BAND_DELAY  2__ controls the __LP__ behaviour of the "Band+"/"Band-"-buttons:
+    - if set to 0 __LP__ event (continuously switch band up/down) will be disabled
+    - any other number __n__ will set the timeout between band switches to be __n * BUTTONTIME_LONGPRESSREPEAT__ (in ms)
+- __#define BANDSWITCH1STEP_DELAY 1__ controls the __2LP(once)__ behaviour of the "Band+"/"Band-"-buttons:
+    - if set to 0 __2LP(once)__ event switch one band up/down) will be disabled
+    - any other number __n__ will set the timeout of the longpress following the first shortpress to be __(n - 1) * BUTTONTIME_LONGPRESSREPEAT + BUTTONTIME_LONGPRESS1__ (in ms). Leaving 1 (minumum) should be fine.
+- __#define BANDUP_2CLICKENABLE 1__ controls the __2CLICK__ behaviour of the "Band+" button:
+    - if set to != 0, __2CLICK__ on "Band+" toggles between last/first band
+- __#define BANDDN_2CLICKENABLE 1__ controls the __2CLICK__ behaviour of the "Band-" button:
+    - if set to != 0, __2CLICK__ on "Band-" toggles between min/max softmute (not in FM)
+- __#define VOLUME_DELAY 1__ controls the __LP__ bevaviour of "Vol+"/"Vol-" buttons:
+    - if set to 0 __LP__ event (continuously change volume up/down) will be disabled
+    - any other number __n__ will set the timeout between volume changes to be __n * BUTTONTIME_LONGPRESSREPEAT__ (in ms)
+- __#define VOLUMEDN_2CLICKENABLE 1__ controls the __2CLICK__ and the __2LP__ behaviour of the "Vol-" button:
+    - if set to 0, both __2CLICK__ and __2LP__ will be disabled (change AVC in non FM-Mode)
+    - if set to any number __n__:
+        - __2CLICK__ will be enabled (toggle AVC between min, default and max, i. e. 12, 38 and 90)
+        - __2LP__ will be enabled (continuously change AVC between min and max) with the timeout between value changes defined as __n * BUTTONTIME_LONGPRESSREPEAT__ (in ms)
+- __#define STEP_DELAY 6__ controls the __LP__ behaviour of the "Step" button:
+    - if set to 0, __LP__ will be disabled
+    - any other number __n__ will set the timeout between band switches to be __n * BUTTONTIME_LONGPRESSREPEAT__ (in ms)
+- __#define STEP_2CLICKENABLE 1__ controls the __2CLICK__ and the __2LP(once)__ behaviour of the "Step" button:
+    - if set to 0, both __2CLICK__ and __2LP(once)__ will be disabled (change AVC in non FM-Mode)
+    - if set to any other valid number: 
+        - __2CLICK__ will be enabled (to toggle Step between min and max, depending on current band)
+        - __2LP(once)__ will be enabled (to set the default step for the current band)
+- __#define BANDWIDTH_DELAY 9__ controls the __LP__ behaviour of the "BW" button:
+    - if set to 0, __LP__ will be disabled
+    - any other number __n__ will set the timeout between bandwidth changes to be __n * BUTTONTIME_LONGPRESSREPEAT__ (in ms)
+- __#define BANDWIDTH_2CLICKENABLE 1__ controls the __2CLICK__ and the __2LP(once)__ behaviour of the "Step" button:
+    - if set to 0, both __2CLICK__ and __2LP(once)__ will be disabled
+    - if set to any other valid number: 
+        - __2CLICK__ will be enabled (toggle between between min and max, depending on current mode)
+        - __2LP(once)__ will be enabled (set default for current mode)   
+- __#define AGC_DELAY 1__ controls the __LP__ behaviour of the "AGC" button:
+    - if set to 0, __LP__ will be disabled
+    - any other number __n__ will set the timeout between AGC changes to be __n * BUTTONTIME_LONGPRESSREPEAT__ (in ms)
+- __#define BANDWIDTH_2CLICKENABLE 1__ controls the __2CLICK__ and the __2LP(once)__ behaviour of the "AGC" button:
+    - if set to 0, both __2CLICK__ and __2LP(once)__ will be disabled
+    - if set to any other valid number: 
+        - __2CLICK__ will be enabled (to toggle between between min and max attenuation, i. e. 12 and 90)
+        - __2LP(once)__ will be enabled (to switch on AGC)   
+- __#define MODE_DELAY 1__ controls the __LP(once)__ behaviour of the "Mode" button (to switch on [Encoder Simulation Mode ESM](#encoder-simulation-mode-esm)):
+    - if set to 0 __LP(once)__ event to switch on ESM will be disabled
+    - any other number __n__ will set the timeout to start ESM  to be __(n - 1) * BUTTONTIME_LONGPRESSREPEAT + BUTTONTIME_LONGPRESS1__ (in ms). Leaving 1 (minumum) should be fine.
+    - within ESM, the timeout between two simulated "roatation clicks" by __LP__ on "Band+" (for simulating turns right) or "Band-" (left) are set by __ESM_SLOWDOWN 0__ and calculated as __(n + 1) *  BUTTONTIME_LONGPRESSREPEAT__ (in ms) with the default value 0 as the fastest possible.
+- __#define ENCODER_DELAY 2__ controls the __LP(once)__ behaviour of the "Encoder" button (to Mute/Unmute the device):
+    - if set to 0 __LP(once)__ event to Mute/Unmute will be disabled
+    - any other number __n__ will define the timeout to Mute/Unmute  to be __(n - 1) * BUTTONTIME_LONGPRESSREPEAT + BUTTONTIME_LONGPRESS1__ (in ms). 
+- __#define ENCODER_SEARCH 1__ allows to enable/disable search in AM and FM mode:
+    - if set to 0, __CLICK__ on encoder will not start search (in AM/FM mode), any other number will enable search mode in AM/FM
+- __#define ENCODER_CANCEL 1__ allows to enable cancellation of (encoder controlled) commands by __CLICK__ on encoder:
+    - if set to !=0, __CLICK__ on encoder will cancel any command that has been started by a shortpress of a button before the timeout (about 4 seconds) will automatically cancel the encoder assignment.
