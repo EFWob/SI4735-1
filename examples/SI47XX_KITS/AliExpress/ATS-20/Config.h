@@ -150,7 +150,8 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                                //   - time between simulated encoder rotations is (x + 1) * BUTTONTIME_LONGPRESSREPEAT (defined in 
                                //     "SimpleButton.h", defaults to roughly 50 ms)              
 
-#define ESM_TIMEOUT 5
+#define ESM_TIMEOUT 60       // Automatic timeout for ESM-mode (in seconds!) after start/last use of ESM mode 
+                             //   - if set to 0, ESM mode can only be left by appropriate longpress on "Mode"
 
 
 #define ENCODER_DELAY  2 // Controls how long the encoder button needs to be longpressed for Mute functionality:
@@ -191,7 +192,7 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                              //    normal as for each other parameter change, i. e. either timeout or if enabled by shortpress on encoder)
                              //  - if set to 0, frequency will stay in normal display upon change
 
-#define BFO_TIMEOUT      10  // Automatic timeout for BFO-mode (in seconds!) after start/last change of BFO setting 
+#define BFO_TIMEOUT      20  // Automatic timeout for BFO-mode (in seconds!) after start/last change of BFO setting 
                              //   - if set to 0, BFO mode must be cancelled by short-press of encoder
 
               
