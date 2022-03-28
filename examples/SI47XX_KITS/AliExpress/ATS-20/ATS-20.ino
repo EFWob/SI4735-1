@@ -131,7 +131,7 @@ bool encoderMode = false;
 bool ssbLoaded = false;
 bool fmStereo = true;
 bool rdsOff = 0 != RDS_OFF;
-
+/*
 bool cmdVolume = false;   // if true, the encoder will control the volume.
 bool cmdAgcAtt = false;   // if true, the encoder will control the AGC / Attenuation
 bool cmdStep = false;     // if true, the encoder will control the step frequency
@@ -143,7 +143,21 @@ bool cmdAvc = false;      // if true, the encoder will control Automatic Volume 
 bool cmdVfo = false;
 #endif
 
-bool cmdAnyOn = false;    // only true, if any of the cmdXxxx-flags above is true
+bool currentCmd = false;    // only true, if any of the cmdXxxx-flags above is true
+*/
+#define CMD_NONE      0
+#define CMD_Volume    _BV(0)
+#define CMD_AgcAtt    _BV(1)
+#define CMD_Step      _BV(2)
+#define CMD_Bw        _BV(3)
+#define CMD_Band      _BV(4)
+#define CMD_SoftMute  _BV(5)
+#define CMD_Avc       _BV(6)
+#if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
+#define CMD_Vfo       _BV(7)
+#endif
+uint8_t currentCmd = CMD_NONE;
+
 
 bool attDirty = false;    // if true, AGC/Att needs to be redrawn on screen
 
@@ -825,10 +839,10 @@ bool direction = (BANDUP_BUTTON == pin);
     {
       if (FM != currentMode)
       {
-        if (cmdAvc || cmdAgcAtt)
+        if (currentCmd & (CMD_Avc | CMD_AgcAtt))
         {
-          disableCommand(NULL, NULL);
-          cmdSoftMute = true;
+          toggleCommand(CMD_NONE);
+          currentCmd = CMD_SoftMute;
           }
         smIdx = (smIdx < 32)?32:0;
         doSoftMute(0);
@@ -892,10 +906,10 @@ bool direction = (BANDUP_BUTTON == pin);
 #endif
   if (BUTTONEVENT_SHORTPRESS == event)
     if (BANDUP_BUTTON == pin)
-       disableCommand(&cmdBand, showBandDesc);
+       toggleCommand(CMD_Band);
     else
       if (currentMode != FM) 
-        disableCommand(&cmdSoftMute, showSoftMute);
+        toggleCommand(CMD_SoftMute);
   return BUTTON_IDLE;
 }  //end of bandEvent()
 
@@ -918,10 +932,10 @@ uint8_t volumeEvent(uint8_t event, uint8_t pin) {
       {
         if ((BUTTONEVENT_2CLICK == event) || (BUTTONEVENT_2FIRSTLONGPRESS == event))
         {
-          if (cmdSoftMute || cmdAgcAtt)
+          if (currentCmd & (CMD_SoftMute | CMD_AgcAtt))
           {
-            disableCommand(NULL, NULL);
-            cmdAvc = true;
+            toggleCommand(CMD_NONE);
+            currentCmd = CMD_Avc;
           }
           if (BUTTONEVENT_2CLICK == event)
           {
@@ -985,10 +999,10 @@ uint8_t volumeEvent(uint8_t event, uint8_t pin) {
 #endif
     if (BUTTONEVENT_SHORTPRESS == event)
       if (VOLUMEUP_BUTTON == pin)
-        disableCommand(&cmdVolume, showVolume);
+        toggleCommand(CMD_Volume);
       else
         if (currentMode != FM) 
-          disableCommand(&cmdAvc, showAvc);
+          toggleCommand(CMD_Avc);
        
   return BUTTON_IDLE;
 } // End of volumeEvent()
@@ -1045,7 +1059,7 @@ uint8_t stepEvent(uint8_t event, uint8_t pin) {
     if (BUTTONEVENT_SHORTPRESS == event)
       if (currentMode != FM)
       {
-        disableCommand(&cmdStep, showStep);
+        toggleCommand(CMD_Step);
         if (bfoOn)
           showBFO();
       }
@@ -1103,7 +1117,7 @@ uint8_t bandwidthEvent(uint8_t event, uint8_t pin) {
     event = BUTTONEVENT_SHORTPRESS;
 #endif
   if(BUTTONEVENT_SHORTPRESS == event)
-      disableCommand(&cmdBw, showBandwidth);
+      toggleCommand(CMD_Bw);
 
   return BUTTON_IDLE;
 } //End of handeBandwidth()
@@ -1132,10 +1146,10 @@ uint8_t agcEvent(uint8_t event, uint8_t pin) {
     {
       if (FM != currentMode)
       {
-        if (cmdSoftMute || cmdAvc)
+        if (currentCmd & (CMD_SoftMute | CMD_Avc))
         {
-          disableCommand(NULL, NULL);
-          cmdAgcAtt = true;
+          toggleCommand(CMD_NONE);
+          currentCmd = CMD_AgcAtt;
         }
         agcIdx = (BUTTONEVENT_2CLICK == event)?(37 == agcIdx?1:37):0;
         doAttenuation(0);
@@ -1181,7 +1195,7 @@ uint8_t agcEvent(uint8_t event, uint8_t pin) {
 #endif
   if (BUTTONEVENT_SHORTPRESS == event) 
     if ( currentMode != FM)
-      disableCommand(&cmdAgcAtt, showAttenuation);
+      toggleCommand(CMD_AgcAtt);
 
   return BUTTON_IDLE;
 }  //End of agcEvent()
@@ -1268,9 +1282,9 @@ uint8_t encoderEvent(uint8_t event, uint8_t pin) {
   if (BUTTONEVENT_SHORTPRESS == event)
   {
 #if (0 != ENCODER_CANCEL)
-    if (cmdAnyOn)
+    if (currentCmd)
     {
-      disableCommand(NULL, NULL); // disable all command buttons
+      toggleCommand(CMD_NONE); // disable all command buttons
       return BUTTON_IDLE;      
     }
 #endif
@@ -1280,8 +1294,8 @@ uint8_t encoderEvent(uint8_t event, uint8_t pin) {
 #if (0 != DISPLAY_OLDSTYLE)
       showFrequency();
 #endif
-      if (cmdAnyOn)
-        disableCommand(NULL, NULL); // disable all command buttons
+      if (currentCmd)
+        toggleCommand(CMD_NONE); // disable all command buttons
       else
         showBFO();
     }
@@ -1464,7 +1478,7 @@ void showFrequency()
 #if (0 != DISPLAY_OLDSTYLE)  
   oled.invertOutput(bfoOn);
 #elif (0 != INVERT_VFO)
-  if (cmdVfo)
+  if (currentCmd & CMD_Vfo)
   {
     oled.invertOutput(true);
     elapsedRSSI = millis16;
@@ -1532,7 +1546,7 @@ void showBandDesc()
   oledSpace(4);
   //oled.print("    ");
   oled.setCursor(0, 0);
-  oled.invertOutput(cmdBand);
+  oled.invertOutput(currentCmd & CMD_Band);
   oled.print(bandMode);
   oled.invertOutput(false);
 }
@@ -1582,7 +1596,7 @@ void showVolume()
 //  oled.setCursor(62, 3);
 //  oledSpace(2);
   //oled.print("  ");
-  oled.invertOutput(cmdVolume);
+  oled.invertOutput(currentCmd & CMD_Volume);
 #if (0 != DISPLAY_OLDSTYLE)
   oled.setCursor(55, 3);
   oled.print(' ');
@@ -1615,7 +1629,7 @@ void showStep()
   if (currentMode != FM)
   {
     oled.setCursor(93, 1);
-    oled.invertOutput(cmdStep);
+    oled.invertOutput(currentCmd & CMD_Step);
     oled.print("S:");
 #if (0 != DISPLAY_OLDSTYLE)
     oled.invertOutput(false);
@@ -1657,7 +1671,7 @@ void showBandwidth()
   }
   oled.setCursor(0, 3);
   oled.setCursor(0, 3);
-  oled.invertOutput(cmdBw);
+  oled.invertOutput(currentCmd & CMD_Bw);
   oled.print("BW: ");
 #if (0 != DISPLAY_OLDSTYLE)
   oled.invertOutput(false);
@@ -1679,7 +1693,7 @@ void showAttenuation()
   //oled.print("     ");
   oled.setCursor(0, 1);
   if ( currentMode != FM ) {
-    oled.invertOutput(cmdAgcAtt);
+    oled.invertOutput(currentCmd & CMD_AgcAtt);
     if (agcIdx == 0)
     {
       oled.print("AGC");
@@ -1703,7 +1717,7 @@ void showSoftMute() {
     oledSpace(5);
     //oled.print("     ");
     oled.setCursor(0, 1);
-    oled.invertOutput(cmdSoftMute);
+    oled.invertOutput(currentCmd & CMD_SoftMute);
     oled.print("SM");
 #if (0 != DISPLAY_OLDSTYLE)
     oled.invertOutput(false);
@@ -1722,7 +1736,7 @@ void showAvc() {
     oledSpace(5);
     //oled.print("     ");
     oled.setCursor(0, 1);
-    oled.invertOutput(cmdAvc);
+    oled.invertOutput(currentCmd & CMD_Avc);
     oled.print("AVC");
 #if (0 != DISPLAY_OLDSTYLE)
     oled.invertOutput(false);
@@ -1744,7 +1758,7 @@ void showBFO()
   oledSpace(14);
   oled.setCursor(0, 2);
 #if (0 == DISPLAY_OLDSTYLE)  
-  oled.invertOutput(bfoOn  && !cmdAnyOn);
+  oled.invertOutput(bfoOn  && !currentCmd);
 #endif
   oled.print("BFO: ");
   oled.print(currentBFO);
@@ -1753,7 +1767,7 @@ void showBFO()
   oled.invertOutput(false);
 #endif
 
-  oled.invertOutput(cmdStep);
+  oled.invertOutput(currentCmd & CMD_Step);
   oled.setCursor(93, 2);
   oled.setCursor(93, 2);
   oled.print("S:");
@@ -2064,60 +2078,57 @@ void doBandwidth(int8_t v, bool show = true)
 /**
    disble command buttons and keep the current status of the last command button pressed
 */
-void disableCommand(bool *b, void (*showFunction)())
+void toggleCommand(uint8_t cmd)
 {
-#if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
-bool wasAnyOn = cmdAnyOn && !cmdVfo;
-#else
-bool wasAnyOn = cmdAnyOn;
-#endif
-bool value = false;
-  if (b != NULL)
-    *b = value = !*b;
-
-  if (wasAnyOn)
-  {  
-    cmdVolume = false;
-    cmdAgcAtt = false;
-    cmdStep = false;
-    cmdBw = false;
-    cmdBand = false;
-    cmdSoftMute = false;
-    cmdAvc = false;
-  }
-  cmdAnyOn = false;    
-
-  if (b != NULL) // rescues the last status of the last command only the parameter is not null
-    if (*b = cmdAnyOn = value)
+uint8_t lastCmd = currentCmd;
+  if (currentCmd != cmd)
+    currentCmd = cmd;
+  else
+    currentCmd = CMD_NONE;
+  if (currentCmd != CMD_NONE)
     {
       if (bfoOn)
-        if (!wasAnyOn)
+        if (!lastCmd)
           showBFO();
-      if ((b == &cmdAvc) || (b == &cmdAgcAtt) || (b == &cmdSoftMute))
+      if (cmd & (CMD_Avc | CMD_AgcAtt | CMD_SoftMute))
         attDirty = false;
     }
-
-  if (wasAnyOn)
+  if (lastCmd)
   {
     if (bfoOn)
       showBFO();
-    showVolume();
-    showStep();
-    showAttenuation();
-    showBandwidth();
-    showBandDesc();
-  }
+    if (lastCmd & CMD_Volume)  
+      showVolume();
+    if (lastCmd & CMD_Step)  
+      showStep();
+    if (lastCmd & (CMD_AgcAtt | CMD_SoftMute | CMD_Avc))
+      showAttenuation();
+    if (lastCmd & CMD_Bw)  
+      showBandwidth();
+    if (lastCmd & CMD_Band)  
+      showBandDesc();
 #if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
-    if (cmdVfo)
-    {
-      cmdVfo = false;
+    if (lastCmd & CMD_Vfo)
       showFrequency();
-    }
 #endif
-
-  if (showFunction != NULL) //  show the desired status only if it is necessary.
-    if (cmdAnyOn)
-      showFunction();
+  }
+  if (currentCmd)
+  {
+    if (currentCmd & CMD_Volume)  
+      showVolume();
+    if (currentCmd & CMD_Step)  
+      showStep();
+    if (currentCmd & CMD_AgcAtt)
+      showAttenuation();
+    if (currentCmd & CMD_SoftMute)
+      showSoftMute();
+    if (currentCmd & CMD_Avc)
+      showAvc();
+    if (currentCmd & CMD_Bw)  
+      showBandwidth();
+    if (currentCmd & CMD_Band)  
+      showBandDesc();
+  }   
   if (attDirty)
   {
     showAttenuation();
@@ -2142,19 +2153,19 @@ void doEncoderAction()
     return;
 #endif
 #endif
-    if (cmdVolume)
+    if (currentCmd & CMD_Volume)
       doVolume(encoderCount);
-    else if (cmdAgcAtt)
+    else if (currentCmd & CMD_AgcAtt)
       doAttenuation(encoderCount);
-    else if (cmdStep)
+    else if (currentCmd & CMD_Step)
       doStep(encoderCount);
-    else if (cmdBw)
+    else if (currentCmd & CMD_Bw)
       doBandwidth(encoderCount);
-    else if (cmdSoftMute)
+    else if (currentCmd & CMD_SoftMute)
       doSoftMute(encoderCount);
-    else if (cmdAvc)
+    else if (currentCmd & CMD_Avc)
       doAvc(encoderCount);
-    else if (cmdBand)
+    else if (currentCmd & CMD_Band)
     {
       if (encoderCount == 1)
         bandUp();
@@ -2184,7 +2195,7 @@ void doEncoderAction()
       // Show the current frequency only if it has changed
       currentFrequency = si4735.getFrequency();
 #if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
-      cmdAnyOn = cmdVfo = true;
+      currentCmd = CMD_Vfo;
 #endif
       showFrequency();
     }
@@ -2243,7 +2254,7 @@ uint8_t x;
 
     if (countRSSI++ > 3)
     {
-      disableCommand(NULL, NULL); // disable all command buttons
+      toggleCommand(CMD_NONE); // disable all command buttons
     }
     else
       elapsedRSSI = millis16;

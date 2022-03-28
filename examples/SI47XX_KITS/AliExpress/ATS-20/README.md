@@ -8,7 +8,8 @@ This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47X
 - The display style while changing a parameter has changed. Not only the parameter name but also the changed value are displayed in inverted style. This change is especially noticeable if the BFO setting is changed this way. Here the BFO-line (and no longer the frequency of the VFO) will be inverted. The frequency will be inverted if changed by turing the rotary encoder.
 - If the rotary encoder breaks, the radio can now be operated by using buttons only (see [Encoder-Simulation-Mode (ESM)](#encoder-simulation-mode) below)).
 - The radio already starts the last station while the intro screen is still showing.
-- Of the changed functionality can be configured to your liking (even disabled alltogether), see [configuration](#configuration) below.
+
+The changed functionality can be configured to your liking (even disabled alltogether), see [configuration](#configuration) below.
 
 
 # Features
@@ -304,9 +305,9 @@ Within **Config.h**, search for the __INTROCONFIG__ section to adjust the settin
 
 Some configuration settings that do not fit into any other category can be defined in the __MISCCONFIG__ section of __Config.h__
 
-- __#define DEFAULT_VOLUME__ sets the default volume (if no valid entry was saved to EEPROM before), must be between 0 and 63
-- __#define DEFAULT_BAND__ sets the index of the band to be played (if no valid entry was saved to EEPROM before), must be between 0 and __lastBand__
-- __#define RDS_OFF__ disables RDS if set to non-zero or enables RDS if set to 0 (if no valid entry was saved to EEPROM before)
+- __#define DEFAULT_VOLUME__ sets the default volume (only used if no valid entry was saved to EEPROM before), must be between 0 and 63
+- __#define DEFAULT_BAND__ sets the index of the band to be played (only used ifno valid entry was saved to EEPROM before), must be between 0 and __lastBand__
+- __#define RDS_OFF__ disables RDS if set to non-zero or enables RDS if set to 0 (only used if no valid entry was saved to EEPROM before)
 - __#define DISPLAY_OLDSTYLE__ will set display behaviour to old mode, if set to non-zero. Main differences in the (default) new mode are:
   - if a parameter is changed by encoder, not only the parameter name but also the parameter value self is displayed in inverted style
   - if the BFO setting is linked to the encode, the BFO-line (and no longer the frequency) are displayed in inverted mode
@@ -321,9 +322,9 @@ Within **Config.h**, search for the __PINCONFIG__ section to change the pin assi
 
 # Some programming hints
 
-On an Arduino Nano, the Flash/RAM usage is 29292 bytes (95%) and 1113 bytes (54%). So while RAM is still fine, program space is limited.
+On an Arduino Nano, the Flash/RAM usage is 29140 bytes (94%) and 1105 bytes (53%). So while RAM is still fine, program space is limited.
 
-With the __#define DEBUG__ set in __Config.h__ this increases to 30666 bytes (99%, only 54 bytes left) and 1388 bytes (67%):
+With the __#define DEBUG__ set in __Config.h__ this increases to 30510 bytes (99%, only 210 bytes left) and 1380 bytes (67%):
 - the device will still be stable, just there is almost no room for added functionality in this setting
 - note that for instance string constants are stored in program memory. So if you change the array __introlines[]__ you will probably increase/decrease Flash size
 
@@ -340,8 +341,10 @@ uint8_t stepEvent(uint8_t event, uint8_t pin) {
 ...
 }
 ```
-This function gets called, whenever a button event (__CLICK__, __LP__ etc.) happens on the "Step"-button. If __DEBUG__ is defined, this function will call __buttonEvent(event, pin);__ (which will print some Debug information on Serial as described [here](#configuration-of-button-timings)). If __DEBUG__ is not set, this call is not compiled thus saving some program space.
-(In total, if all of the options are [disabled](#configuration-of-button-functions), the used Flash/RAM size goes down to 27664/1099 bytes).
+This function gets called, whenever a button event (__CLICK__, __LP__ etc.) happens on the "Step"-button. If __DEBUG__ is defined, this function will call __buttonEvent(event, pin);__ (which will print some Debug information on Serial as described [here](#configuration-of-button-timings)). 
+If __DEBUG__ is not set, this call is not compiled thus saving some program space.
+
+(In total, if all of the options are [disabled](#configuration-of-button-functions), the used Flash/RAM size goes down to 27480/1092 bytes).
 
 If you want to change the function assignment to a button event, you have to change the programming. The most likely point to start are the "button handlers". For each button you will find a line in __loop()__ that looks like the following:
 ```
@@ -356,26 +359,28 @@ The callback function must be defined with the following signature:
    uint8_t volumeEvent(uint8_t event, uint8_t pin);
 ```
 (The return-value is ignored in this application).
-The parameter __pin__ specifies the GPIO that is linked to the specific button. This can be use the same callback function for more than one button with similar funtionality (i. e. "Vol+"/"Vol-" where the reaction on a longpress is the same just the direction of change depends on which button was actually pressed).
+
+The parameter __pin__ specifies the GPIO that is linked to the specific button. This way the the same callback function can be used for more than one button with a similar funtionality (i. e. "Vol+"/"Vol-" where the reaction on a longpress is the same just the direction of change depends on which button was actually pressed).
 
 The parameter __event__ is a constant defined in __SimpleButton.h__ that specifies the event that triggered the call:
 - __BUTTONEVENT_SHORTPRESS__: Shortpress-Event (aka __CLICK__) detected
 - __BUTTONEVENT_2CLICK__: Double-click-Event (aka __2CLICK__)
 - __BUTTONEVENT_FIRSTLONGPRESS__: Button is longpressed, longpress just started. 
 - __BUTTONEVENT_LONGPRESS__: Button is still longpressed (event will be generated every x ms as defined by 
-                            __BUTTONTIME_LONGPRESSREPEAT__ in __SimpleButton.h__
+                            __BUTTONTIME_LONGPRESSREPEAT__ in __SimpleButton.h__)
 - __BUTTONEVENT_LONGPRESSDONE__: Button is released after longpress. (Normally this is not an event that should be linked to any user function but allows the application to do some cleanup if needed)
 - __BUTTONEVENT_2FIRSTLONGPRESS__: Button is longpressed (after preceeding shortpress), "double-longpress" just started. 
-- __BUTTONEVENT_2LONGPRESS__: Button is still "double-longpressed" (event will be generated every x ms as defined by __BUTTONTIME_LONGPRESSREPEAT__ in __SimpleButton.h__
+- __BUTTONEVENT_2LONGPRESS__: Button is still "double-longpressed" (event will be generated every x ms as defined by __BUTTONTIME_LONGPRESSREPEAT__ in __SimpleButton.h__)
 - __BUTTONEVENT_2LONGPRESSDONE__: Button is released after "double-longpress". (Normally this is not an event that should be linked to any user function but allows the application to do some cleanup if needed)
 
 One longpress-episode will result in the following sequence:
 - first the callback will be called with event set to __BUTTONEVENT_FIRSTLONGPRESS__. 
-- after this, zero or multiple calls with event __BUTTONEVENT_LONGPRESS__ will follow (will be 0 if button was released before timeout __BUTTONTIME_LONGPRESSREPEAT__ elapsed)
+- after this, zero or multiple calls with event __BUTTONEVENT_LONGPRESS__ will follow (zero calls will happen if the button was released before timeout __BUTTONTIME_LONGPRESSREPEAT__ elapsed)
 - after the button has been released, callback will be called with event set to __BUTTONEVENT_LONGPRESSDONE__.
+
 Same applies for "double-longpress", just the events will change to __BUTTONEVENT_2FIRSTLONGPRESS__, __BUTTONEVENT_2LONGPRESS__ and __BUTTONEVENT_2LONGPRESSDONE__.
 
-With __BUTTONEVENT_SHORTPRESS__ and __BUTTONEVENT_2CLICK__ there is a direct link to the "application events" __CLICK__ and __2CLICK__. The __LP__, __LP(once)__, __2LP__ or __2LP(once)__ events must be designed using the respective __BUTTONEVENTS__ listed above.
+With __BUTTONEVENT_SHORTPRESS__ and __BUTTONEVENT_2CLICK__ there is a direct link to the "application events" __CLICK__ and __2CLICK__. The __LP__, __LP(once)__, __2LP__ or __2LP(once)__ events must be derived using the respective __BUTTONEVENTS__ listed above.
 
 Consider the following example how this is handled for changing the Volume up or down by longpress on "Vol+" or "Vol-" button:
 
@@ -419,8 +424,8 @@ uint8_t volumeEvent(uint8_t event, uint8_t pin) {
 - in case greater than one, __static uint8_t count;__ is defined and set to 0 to keep track of the number of events that occured to skip (discard) events if needed. Notice the __static__ scope of the variable that allows to retain the value even if the function has returned.  
 - after this it is checked, if the event is a longpress-event but not a longpress-release-event (so valid are 
  __BUTTONEVENT_FIRSTLONGPRESS__ or __BUTTONEVENT_LONGPRESS__ ), if so again the 2 cases from above need to be considered:
-  - __VOLUME_DELAY__ is precise 1, only the call __doVolume(VOLUMEUP_BUTTON == pin?1:-1);__ will result that volume is increased (if the pin is equal to __VOLUMEUP_BUTTON__) or decreased (pin can only be __VOLUME_DN_BUTTON__ in that case)
-  - if __VOLUME_DELAY__ is greater than one, __count__ is checked to be 0. If so, __doVolume()__ will be called. After this, count is increased by one and wrapped around (to 0) if it reaches __VOLUME_DELAY__
+  - __VOLUME_DELAY__ is precise 1, only the call __doVolume(VOLUMEUP_BUTTON == pin?1:-1);__ will result that will increase (if the pin is equal to __VOLUMEUP_BUTTON__) or decrease (pin can only be __VOLUME_DN_BUTTON__ in that case) the volume
+  - if __VOLUME_DELAY__ is greater than one, __count__ is checked to be 0. If so, __doVolume()__ will be called like just described. After this, count is increased by one and wrapped around (to 0) if it reaches __VOLUME_DELAY__
 
  You might have noticed that there is a "flaw" in the algorithm: __count__ is used for either pin. In practice that makes no difference. If you longpress both buttons at the same time, you will see that the Volume stays at the same level (may be just toggles between two values).
 
