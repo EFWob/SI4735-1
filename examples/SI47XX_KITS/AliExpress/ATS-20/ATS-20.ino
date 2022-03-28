@@ -139,6 +139,9 @@ bool cmdBw = false;       // if true, the encoder will control the bandwidth
 bool cmdBand = false;     // if true, the encoder will control the band
 bool cmdSoftMute = false; // if true, the encoder will control the Soft Mute attenuation
 bool cmdAvc = false;      // if true, the encoder will control Automatic Volume Control
+#if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
+bool cmdVfo = false;
+#endif
 
 bool cmdAnyOn = false;    // only true, if any of the cmdXxxx-flags above is true
 
@@ -285,7 +288,7 @@ Band band[] = {
   {SW_BAND_TYPE, 8500, 10000, 9600, 1, 4},
   {SW_BAND_TYPE, 10000, 11200, 10100, 0, 4},  // 30 meters
   {SW_BAND_TYPE, 11200, 12500, 11940, 1, 4},
-  {SW_BAND_TYPE, 13400, 13900, 13600, 1, 4},
+  {SW_BAND_TYPE, 13200, 13900, 13600, 1, 4},
   {SW_BAND_TYPE, 14000, 14500, 14200, 0, 4},  // 20 meters
   {SW_BAND_TYPE, 15000, 15900, 15300, 1, 4},
   {SW_BAND_TYPE, 17200, 17900, 17600, 1, 4},
@@ -315,6 +318,7 @@ void showEncoderMode(void);
 void doBandwidth(int8_t v, bool show = true);
 void doStep(int8_t v);
 void doAttenuation(int8_t v);
+void showRSSI(bool force = false);
 
 // show n spaces on display starting at current cursor position
 void oledSpace(uint8_t n)
@@ -428,7 +432,6 @@ void readAllReceiverInformation()
 {
   int addr_offset = eeprom_address;
   int bwIdx;
-  
   volume = EEPROM.read(++addr_offset); // Gets the stored volume;
   bandIdx = EEPROM.read(++addr_offset);
   currentMode = EEPROM.read(++addr_offset);
@@ -588,7 +591,6 @@ uint16_t stateTime;
         {
           readAllReceiverInformation();
         }
-
         si4735.setVolume(volume);
         useBand();
         //if (FM == currentMode)
@@ -659,8 +661,6 @@ void setup()
   {
     readAllReceiverInformation();
   }
-
-  
   si4735.setVolume(volume);
   useBand(false);
 #endif
@@ -960,23 +960,23 @@ uint8_t volumeEvent(uint8_t event, uint8_t pin) {
     if (!BUTTONEVENT_ISDONE(event))             // Any event to change the volume?
       if ((BUTTONEVENT_SHORTPRESS != event) || (VOLUMEUP_BUTTON == pin))
         doVolume(1);                              // yes-->Unmute
-#if (0 != VOLUME_DELAY)
-#if (VOLUME_DELAY > 1)
-  static uint8_t count;
-  if (BUTTONEVENT_FIRSTLONGPRESS == event)
+#if (0 != VOLUME_DELAY)                         // Longpress on "Vol+"/"Vol-" allowed?
+#if (VOLUME_DELAY > 1)                          // react on every "nth"- LP_REPEAT event only?
+  static uint8_t count;                           // -->Keep count of LP-events to skip
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)        // -->if LP-episode starts
   {
-    count = 0;
+    count = 0;                                      // --->set count to 0
   }
 #endif
-  if (BUTTONEVENT_ISLONGPRESS(event))           // longpress-Event?
-    if (BUTTONEVENT_LONGPRESSDONE != event)     // but not the final release of button?
+  if (BUTTONEVENT_ISLONGPRESS(event))           // longpress-Event? (can be LP_START, LP_DONE, LP_REPEAT
+    if (BUTTONEVENT_LONGPRESSDONE != event)       // -->but not the final release? (i. e. LP_START or LP_REPEAT)
     {
-#if (VOLUME_DELAY > 1)
-      if (count++ == 0)
-#endif
-        doVolume(VOLUMEUP_BUTTON == pin?1:-1); 
-#if (VOLUME_DELAY > 1)
-      count = count % VOLUME_DELAY;
+#if (VOLUME_DELAY == 1)                           // -->change at any LONGPRESS_REPEAT-event (or LP_START)?
+      doVolume(VOLUMEUP_BUTTON == pin?1:-1);        // -->do the change (direction depending on parameter "pin")
+#else                                             // -->skip a few repeats for slower change of volume
+      if (!count)                                   // --> time to change the volume?
+        doVolume(VOLUMEUP_BUTTON == pin?1:-1);        // ---> do the change (direction depending on parameter "pin")
+      count = (count + 1) % VOLUME_DELAY;           // -->increase & wrap around the counter
 #endif
     }
 #else
@@ -1009,7 +1009,6 @@ uint8_t stepEvent(uint8_t event, uint8_t pin) {
     if (BUTTONEVENT_2CLICK == event)
     {
       idxStep = (idxStep == lastStep?0:lastStep);
-      //applyParameterChange(&idxStep, 0, lastStep, doStep);
       doStep(0);
       event = BUTTON_PRESSED;
     }
@@ -1202,7 +1201,12 @@ static uint8_t count = 0;
   if (BUTTONEVENT_FIRSTLONGPRESS == event)
   {
 #if (0 != MODE_DELAY)
-    count = 0;
+#if (0 != ESM_DONE_SPEEDUP)
+    if (encoderMode)
+      count = ESM_DONE_SPEEDUP >= MODE_DELAY?1:MODE_DELAY - ESM_DONE_SPEEDUP;
+    else
+#endif
+      count = MODE_DELAY;
 #else
     event = BUTTONEVENT_SHORTPRESS;
 #endif
@@ -1210,8 +1214,8 @@ static uint8_t count = 0;
 #if (0 != MODE_DELAY)
   else if (BUTTONEVENT_LONGPRESS == event)
   {
-    if (count < MODE_DELAY)
-      if (++count == MODE_DELAY)
+    if (count)
+      if (!--count)
       {
         encoderMode = !encoderMode;
         showEncoderMode();
@@ -1459,10 +1463,17 @@ void showFrequency()
   }
 #if (0 != DISPLAY_OLDSTYLE)  
   oled.invertOutput(bfoOn);
+#elif (0 != INVERT_VFO)
+  if (cmdVfo)
+  {
+    oled.invertOutput(true);
+    elapsedRSSI = millis16;
+    countRSSI = 0;
+  }
 #endif
   oled.setFont(FONT8X16ATARI);
   oled.setCursor(34, 0);
-  oledSpace(6);
+  //oledSpace(6);
   //oled.print("      ");
   oled.setCursor(34, 0);
   oled.print(freqDisplay);
@@ -1470,6 +1481,7 @@ void showFrequency()
   oled.invertOutput(false);
 
   showEncoderMode();
+  showRSSI();
 }
 
 /**
@@ -1528,7 +1540,7 @@ void showBandDesc()
 /* *******************************
    Shows RSSI status
 */
-void showRSSI(bool force = false)
+void showRSSI(bool force)
 {  
 static int8_t lastBars = -1;
   int8_t bars = (rssi / 16);
@@ -2054,7 +2066,11 @@ void doBandwidth(int8_t v, bool show = true)
 */
 void disableCommand(bool *b, void (*showFunction)())
 {
+#if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
+bool wasAnyOn = cmdAnyOn && !cmdVfo;
+#else
 bool wasAnyOn = cmdAnyOn;
+#endif
 bool value = false;
   if (b != NULL)
     *b = value = !*b;
@@ -2068,10 +2084,9 @@ bool value = false;
     cmdBand = false;
     cmdSoftMute = false;
     cmdAvc = false;
-    
-    cmdAnyOn = false;
-    
   }
+  cmdAnyOn = false;    
+
   if (b != NULL) // rescues the last status of the last command only the parameter is not null
     if (*b = cmdAnyOn = value)
     {
@@ -2092,6 +2107,13 @@ bool value = false;
     showBandwidth();
     showBandDesc();
   }
+#if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
+    if (cmdVfo)
+    {
+      cmdVfo = false;
+      showFrequency();
+    }
+#endif
 
   if (showFunction != NULL) //  show the desired status only if it is necessary.
     if (cmdAnyOn)
@@ -2147,7 +2169,9 @@ void doEncoderAction()
     }
     else
     {
-      if (encoderCount == 1)
+      if (muteVolume)
+        doVolume(0);
+      else if (encoderCount == 1)
       {
         si4735.frequencyUp();
         seekDirection = 1;
@@ -2159,6 +2183,9 @@ void doEncoderAction()
       }
       // Show the current frequency only if it has changed
       currentFrequency = si4735.getFrequency();
+#if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
+      cmdAnyOn = cmdVfo = true;
+#endif
       showFrequency();
     }
     encoderCount = 0;

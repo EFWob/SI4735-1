@@ -3,10 +3,12 @@
 **This example is intended to be merged to https://github.com/pu2clr/SI4735/tree/master/examples/SI47XX_KITS/AliExpress/SI473X_ALL_IN_ONE_OLED_RDS_CHINESE_V8. This fork exists just for preparing the pull request. The work to be done is to finish this README and to fix some errors if found on the go...**
 
 This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47XX_KITS/AliExpress/SI473X_ALL_IN_ONE_OLED_RDS_CHINESE_V7 as starting point. The functionality has not changed in general but has some rework on the user-interface:
-- The display does not flicker anymore.
+- The display does not flicker anymore if no values are changed (will be especially visible in AM/SSB-display).
 - Buttons are now linked to more than one function (see section [User manual](#user-manual) below) by using i. e. double-click or longpress events.
+- The display style while changing a parameter has changed. Not only the parameter name but also the changed value are displayed in inverted style. This change is especially noticeable if the BFO setting is changed this way. Here the BFO-line (and no longer the frequency of the VFO) will be inverted. The frequency will be inverted if changed by turing the rotary encoder.
 - If the rotary encoder breaks, the radio can now be operated by using buttons only (see [Encoder-Simulation-Mode (ESM)](#encoder-simulation-mode) below)).
 - The radio already starts the last station while the intro screen is still showing.
+- Of the changed functionality can be configured to your liking (even disabled alltogether), see [configuration](#configuration) below.
 
 
 # Features
@@ -99,7 +101,7 @@ This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47X
   - **CLICK**: if any command is selected (to be changed by rotary encoder), cancel that command immediately (not waiting for timeout)
            else if in AM/FM-Mode: start search
            else if in SSB-Mode: toggle rotary encoder between BFO/VFO-setting
-  - **LP(once)**: toggle Mute (if muted, "XX" will be displayed as current volume)
+  - **LP(once)**: toggle Mute (if muted, "XX" will be displayed as current volume). Radio will resume at last volume, if any volume change function (i. e. by __LP__ on "Vol+" or "Vol-") or the rotary encoder is turned to change the current frequency.
 
 - assigned to "Rotary-Encoder-Button" (at startup):
   - if pressed when powered on, EEPROM will be cleared
@@ -269,9 +271,12 @@ The following should apply in general (I might have not tested all variants):
     - if set to any other valid number: 
         - __2CLICK__ will be enabled (to toggle between between min and max attenuation, i. e. 12 and 90)
         - __2LP(once)__ will be enabled (to switch on AGC)   
-- __#define MODE_DELAY 1__ controls the __LP(once)__ behaviour of the "Mode" button (to switch on [Encoder Simulation Mode ESM](#encoder-simulation-mode-esm)):
+- __#define MODE_DELAY 15__ controls the __LP(once)__ behaviour of the "Mode" button (to switch on [Encoder Simulation Mode ESM](#encoder-simulation-mode-esm)):
     - if set to 0 __LP(once)__ event to switch on ESM will be disabled
     - any other number __n__ will set the timeout to start ESM  to be __(n - 1) * BUTTONTIME_LONGPRESSREPEAT + BUTTONTIME_LONGPRESS1__ (in ms). Leaving 1 (minumum) should be fine.
+    - as ESM can be confusing if switched on unintendedly, __MODE_DELAY__ should be set to a high value. In order to quit ESM faster (than entering it), the __#define ESM_DONE_SPEEDUP__ can be set in addition to shorten the longpress needed to cancel active ESM:
+      - if set to 0, same longpress length is required to cancel ESM
+      - shortest is to set to the same value as __MODE_DELAY__ or above (so setting it to 255 will always lead to the shortest possible longpress time to cancel ESM, no matter how __ENCODER_MODE__ is defined)
     - within ESM, the timeout between two simulated "roatation clicks" by __LP__ on "Band+" (for simulating turns right) or "Band-" (left) are set by __ESM_SLOWDOWN 0__ and calculated as __(n + 1) *  BUTTONTIME_LONGPRESSREPEAT__ (in ms) with the default value 0 as the fastest possible.
 - __#define ENCODER_DELAY 2__ controls the __LP(once)__ behaviour of the "Encoder" button (to Mute/Unmute the device):
     - if set to 0 __LP(once)__ event to Mute/Unmute will be disabled
@@ -280,3 +285,144 @@ The following should apply in general (I might have not tested all variants):
     - if set to 0, __CLICK__ on encoder will not start search (in AM/FM mode), any other number will enable search mode in AM/FM
 - __#define ENCODER_CANCEL 1__ allows to enable cancellation of (encoder controlled) commands by __CLICK__ on encoder:
     - if set to !=0, __CLICK__ on encoder will cancel any command that has been started by a shortpress of a button before the timeout (about 4 seconds) will automatically cancel the encoder assignment.
+
+## Configuration of Intro screen
+
+Within **Config.h**, search for the __INTROCONFIG__ section to adjust the settings for the intro screen to your liking.
+
+- the lines to be shown can be defined using the array __char introlines = {...}__. 
+  - at most 4 lines can be defined, excess lines will be ignored
+  - an empty array can be defined (as __char* introlines[]={};__) to disable the intro screen altogether
+  - The intro will show line by line with the delay (in ms) after each lines specified by __#define INTRO_LINEDELAY__
+  - The additional delay after all lines have been displayed can be specified by __#define INTRO_ENDDELAY__
+    - if both defines (__INTRO_LINEDELAY__ and __INTRO_ENDDELAY__) are set to 0, intro screen will not be shown (setting empty __char* introlines[] == {}__ is the better option as it will save some memory)
+  - if the __#define INTRO_LONGPRESSDELAY__ is set to any number n > 0 (as uint8_t), a longpress on the encoder while the info screen is still showing will also erase EEPROM (no need to press the encoder already on power up). The required longpress duration is calculated as __(n - 1) * BUTTONTIME_LONGPRESSREPEAT + BUTTONTIME_LONGPRESS1__ (in ms). (if set to 0, longpress on encoder will be treated the same as shortpress and cancel the intro)
+  - if EEPROM was deleted (either by longpress of eduring intro or at power up), the intro will be cancelled and the screen will show "EEPROM erased". The timeout (in ms) can be specified by __#define INTRO_CLREEPROMDELAY__. After that timeout (or button release, whatever condition applies longer) the EEPROM clear message will disapear and the normal radio screen will show
+  - the device will already play the last station while the intro screen is still showing. If you do not want this you can set the __#define INTRO_SILENT__ to any non-zero value to return to the "old" behaviour of starting audio only after the intro screen has been finished.
+
+## Miscellaneous configuration
+
+Some configuration settings that do not fit into any other category can be defined in the __MISCCONFIG__ section of __Config.h__
+
+- __#define DEFAULT_VOLUME__ sets the default volume (if no valid entry was saved to EEPROM before), must be between 0 and 63
+- __#define DEFAULT_BAND__ sets the index of the band to be played (if no valid entry was saved to EEPROM before), must be between 0 and __lastBand__
+- __#define RDS_OFF__ disables RDS if set to non-zero or enables RDS if set to 0 (if no valid entry was saved to EEPROM before)
+- __#define DISPLAY_OLDSTYLE__ will set display behaviour to old mode, if set to non-zero. Main differences in the (default) new mode are:
+  - if a parameter is changed by encoder, not only the parameter name but also the parameter value self is displayed in inverted style
+  - if the BFO setting is linked to the encode, the BFO-line (and no longer the frequency) are displayed in inverted mode
+
+
+## Configuration of Pin assignments
+
+Within **Config.h**, search for the __PINCONFIG__ section to change the pin assignments.
+
+- the assignments itself have not changed compared to prior versions, they are just moved here for convenience.
+- a few literals have been changed to better match to the button description (on the ATS-20 specifically) i. e. __#define BANDUP_BUTTON__ or __#define BANDDN_BUTTON__
+
+# Some programming hints
+
+On an Arduino Nano, the Flash/RAM usage is 29292 bytes (95%) and 1113 bytes (54%). So while RAM is still fine, program space is limited.
+
+With the __#define DEBUG__ set in __Config.h__ this increases to 30666 bytes (99%, only 54 bytes left) and 1388 bytes (67%):
+- the device will still be stable, just there is almost no room for added functionality in this setting
+- note that for instance string constants are stored in program memory. So if you change the array __introlines[]__ you will probably increase/decrease Flash size
+
+As described [above](#configuration-of-button-functions), most functions can be configured. If a function is disabled, some parts of the code will not be compiled in thus reducing the Flash usage. This is achieved by using the __#defines__ as conditional compile guard.
+
+Consider the following example:
+```
+//Handle Actions of "Step"-button
+uint8_t stepEvent(uint8_t event, uint8_t pin) {
+#ifdef DEBUG
+  buttonEvent(event, pin);
+#endif
+
+...
+}
+```
+This function gets called, whenever a button event (__CLICK__, __LP__ etc.) happens on the "Step"-button. If __DEBUG__ is defined, this function will call __buttonEvent(event, pin);__ (which will print some Debug information on Serial as described [here](#configuration-of-button-timings)). If __DEBUG__ is not set, this call is not compiled thus saving some program space.
+(In total, if all of the options are [disabled](#configuration-of-button-functions), the used Flash/RAM size goes down to 27664/1099 bytes).
+
+If you want to change the function assignment to a button event, you have to change the programming. The most likely point to start are the "button handlers". For each button you will find a line in __loop()__ that looks like the following:
+```
+   btn_VolumeUp.checkEvent(volumeEvent);
+```
+
+Here, __btn_VolumeUp__ is the object that handles the "Vol+" button. __.checkEvent__ is the method that checks, if any button event is due and, if so, calls the callback-function __volumeEvent__ 
+For a timely processing of the events, a frequent call of the __checkEvent()__ in loop() is needed.
+
+The callback function must be defined with the following signature:
+```
+   uint8_t volumeEvent(uint8_t event, uint8_t pin);
+```
+(The return-value is ignored in this application).
+The parameter __pin__ specifies the GPIO that is linked to the specific button. This can be use the same callback function for more than one button with similar funtionality (i. e. "Vol+"/"Vol-" where the reaction on a longpress is the same just the direction of change depends on which button was actually pressed).
+
+The parameter __event__ is a constant defined in __SimpleButton.h__ that specifies the event that triggered the call:
+- __BUTTONEVENT_SHORTPRESS__: Shortpress-Event (aka __CLICK__) detected
+- __BUTTONEVENT_2CLICK__: Double-click-Event (aka __2CLICK__)
+- __BUTTONEVENT_FIRSTLONGPRESS__: Button is longpressed, longpress just started. 
+- __BUTTONEVENT_LONGPRESS__: Button is still longpressed (event will be generated every x ms as defined by 
+                            __BUTTONTIME_LONGPRESSREPEAT__ in __SimpleButton.h__
+- __BUTTONEVENT_LONGPRESSDONE__: Button is released after longpress. (Normally this is not an event that should be linked to any user function but allows the application to do some cleanup if needed)
+- __BUTTONEVENT_2FIRSTLONGPRESS__: Button is longpressed (after preceeding shortpress), "double-longpress" just started. 
+- __BUTTONEVENT_2LONGPRESS__: Button is still "double-longpressed" (event will be generated every x ms as defined by __BUTTONTIME_LONGPRESSREPEAT__ in __SimpleButton.h__
+- __BUTTONEVENT_2LONGPRESSDONE__: Button is released after "double-longpress". (Normally this is not an event that should be linked to any user function but allows the application to do some cleanup if needed)
+
+One longpress-episode will result in the following sequence:
+- first the callback will be called with event set to __BUTTONEVENT_FIRSTLONGPRESS__. 
+- after this, zero or multiple calls with event __BUTTONEVENT_LONGPRESS__ will follow (will be 0 if button was released before timeout __BUTTONTIME_LONGPRESSREPEAT__ elapsed)
+- after the button has been released, callback will be called with event set to __BUTTONEVENT_LONGPRESSDONE__.
+Same applies for "double-longpress", just the events will change to __BUTTONEVENT_2FIRSTLONGPRESS__, __BUTTONEVENT_2LONGPRESS__ and __BUTTONEVENT_2LONGPRESSDONE__.
+
+With __BUTTONEVENT_SHORTPRESS__ and __BUTTONEVENT_2CLICK__ there is a direct link to the "application events" __CLICK__ and __2CLICK__. The __LP__, __LP(once)__, __2LP__ or __2LP(once)__ events must be designed using the respective __BUTTONEVENTS__ listed above.
+
+Consider the following example how this is handled for changing the Volume up or down by longpress on "Vol+" or "Vol-" button:
+
+```
+//Handle Actions of "Vol+"/"Vol-"-buttons
+uint8_t volumeEvent(uint8_t event, uint8_t pin) {
+
+//...
+#if (0 != VOLUME_DELAY)                         // Longpress on "Vol+"/"Vol-" allowed?
+#if (VOLUME_DELAY > 1)                          // react on every "nth"- LP_REPEAT event only?
+  static uint8_t count;                           // -->Keep count of LP-events to skip
+  if (BUTTONEVENT_FIRSTLONGPRESS == event)        // -->if LP-episode starts
+  {
+    count = 0;                                      // --->set count to 0
+  }
+#endif
+  if (BUTTONEVENT_ISLONGPRESS(event))           // longpress-Event? (can be LP_START, LP_DONE, LP_REPEAT
+    if (BUTTONEVENT_LONGPRESSDONE != event)       // -->but not the final release? (i. e. LP_START or LP_REPEAT)
+    {
+#if (VOLUME_DELAY == 1)                           // -->change at any LONGPRESS_REPEAT-event (or LP_START)?
+      doVolume(VOLUMEUP_BUTTON == pin?1:-1);        // -->do the change (direction depending on parameter "pin")
+#else                                             // -->skip a few repeats for slower change of volume
+      if (!count)                                   // --> time to change the volume?
+        doVolume(VOLUMEUP_BUTTON == pin?1:-1);        // ---> do the change (direction depending on parameter "pin")
+      count = (count + 1) % VOLUME_DELAY;           // -->increase & wrap around the counter
+#endif
+    }
+
+//...
+
+#endif
+
+//...
+
+
+```
+- First thing to notice is the conditional compile starting with __#if (0 != VOLUME_DELAY)__ that requires __VOLUME_DELAY__ to be >= 1 for the funtionality to be built in
+- then there are two possible cases:
+  - __VOLUME_DELAY__ is precise 1 or
+  - __VOLUME_DELAY__ is greater than 1
+- in case greater than one, __static uint8_t count;__ is defined and set to 0 to keep track of the number of events that occured to skip (discard) events if needed. Notice the __static__ scope of the variable that allows to retain the value even if the function has returned.  
+- after this it is checked, if the event is a longpress-event but not a longpress-release-event (so valid are 
+ __BUTTONEVENT_FIRSTLONGPRESS__ or __BUTTONEVENT_LONGPRESS__ ), if so again the 2 cases from above need to be considered:
+  - __VOLUME_DELAY__ is precise 1, only the call __doVolume(VOLUMEUP_BUTTON == pin?1:-1);__ will result that volume is increased (if the pin is equal to __VOLUMEUP_BUTTON__) or decreased (pin can only be __VOLUME_DN_BUTTON__ in that case)
+  - if __VOLUME_DELAY__ is greater than one, __count__ is checked to be 0. If so, __doVolume()__ will be called. After this, count is increased by one and wrapped around (to 0) if it reaches __VOLUME_DELAY__
+
+ You might have noticed that there is a "flaw" in the algorithm: __count__ is used for either pin. In practice that makes no difference. If you longpress both buttons at the same time, you will see that the Volume stays at the same level (may be just toggles between two values).
+
+
+

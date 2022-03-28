@@ -1,7 +1,7 @@
 #ifndef config_h
 #define config_h
 // CONFIG-SECTION
-//#define DEBUG                 // if defined, Serial output will show some info on button press events (at 115200 baud)
+#define DEBUG                 // if defined, Serial output will show some info on button press events (at 115200 baud)
 //#define DEBUG_BUTTONS_ONLY    // if defined (in addition to DEBUG), only button events will be reported on Serial, no radio function
                               // (use this to adjust the BUTTONTIME_XXXX-defines in include file "SimpleButton.h" to your liking)
 
@@ -123,7 +123,7 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                                //     - DOUBLE-CLICK on AGC-button will toggle between Min and Max Attenuation (12/90)
                                //     - DOOUBLE_LONGCLICK on AGC-Button will set AGC
 
-#define MODE_DELAY        1 // Controls "EncoderSimulationMode" ("ESM") (LP on "Mode"-Button):
+#define MODE_DELAY        15 // Controls "EncoderSimulationMode" ("ESM") (LP on "Mode"-Button):
                              //    -if enabled (>0), "EncoderSimulationMode" can be toggled by a longpress on button "Mode"
                              //    -in "ESM" a short/longpress to Band+ and Band- will be the same as rotating the encoder
                              //       right/left
@@ -140,7 +140,11 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                              //       - DoubleClick (instead of click) on "Band-" will start "SoftMute-Function" for 4 secs
                              //        -DoubleClick/Longclick on "AGC" allows for AGC-Settings
 
-
+#define  ESM_DONE_SPEEDUP 255 // This setting only takes effect, if MODE_DELAY is set != 0
+                             //     - if set to 'x', the longpress-time to stop active ESM is calculated as 
+                             //        (MODE_DELAY - x) * BUTTONTIME_LONGPRESSREPEAT + BUTTONTIME_LONGPRESS1
+                             //     - will be capped at MODE_DELAY, thus can be set to 255 to always end ESM direct at start 
+                             //       of longpress
 #define ESM_SLOWDOWN 0 // Controls how fast repeated longpress on "Mode+"/"Mode-" will be translated into Encoder rotations
                                //   - must be uint_8, i. e. between 0 and 255
                                //   - time between simulated encoder rotations is (x + 1) * BUTTONTIME_LONGPRESSREPEAT (defined in 
@@ -170,14 +174,19 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
                               //   -must be a valid index into the band table band[] (see below)
                               //   -can be set to "lastBand" (w/o the quotation marks!) to address the last band defined in the table
 
+#define RDS_OFF            0 // Set to 0/1, if RDS should be enabled/disabled for FM at startup (RDS can be toggled ON/OFF in 
+                             // FM mode by shortpress on "Mode"-Button later)
+
 #define DISPLAY_OLDSTYLE   0 // Set to != 0 to use old style display
                              //  - Old style display: in BFO-Mode, the frequency is inverted. For every other function, the
                              //       function name preceeding the changing parameter is inverted (but not the parameter itself)
                              //  - New style display: both function name and parameter are inverted. Also for BFO setting
                              //       (in BFO-Mode frequency stays in not inverted display) 
 
-#define RDS_OFF            0 // Set to 0/1, if RDS should be enabled/disabled for FM at startup (RDS can be toggled ON/OFF in 
-                             // FM mode by shortpress on "Mode"-Button later)
+#define INVERT_VFO        1  // Only takes effect, if DISPLAY_OLDSTYLE above is set to 0
+                             //  - if set to != 0, frequency value will be inverted if VFO is changed by encoder (display will return to
+                             //    normal as for each other parameter change, i. e. either timeout or if enabled by shortpress on encoder)
+                             //  - if set to 0, frequency will stay in normal display upon change
 
 
 
