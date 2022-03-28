@@ -6,6 +6,7 @@ This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47X
 - The display does not flicker anymore if no values are changed (will be especially visible in AM/SSB-display).
 - Buttons are now linked to more than one function (see section [User manual](#user-manual) below) by using i. e. double-click or longpress events.
 - The display style while changing a parameter has changed. Not only the parameter name but also the changed value are displayed in inverted style. This change is especially noticeable if the BFO setting is changed this way. Here the BFO-line (and no longer the frequency of the VFO) will be inverted. The frequency will be inverted if changed by turing the rotary encoder.
+- A ([configurable](#miscellaneous-configuration)) timeout for the BFO-mode has been added.
 - If the rotary encoder breaks, the radio can now be operated by using buttons only (see [Encoder-Simulation-Mode (ESM)](#encoder-simulation-mode) below)).
 - The radio already starts the last station while the intro screen is still showing.
 
@@ -279,6 +280,7 @@ The following should apply in general (I might have not tested all variants):
       - if set to 0, same longpress length is required to cancel ESM
       - shortest is to set to the same value as __MODE_DELAY__ or above (so setting it to 255 will always lead to the shortest possible longpress time to cancel ESM, no matter how __ENCODER_MODE__ is defined)
     - within ESM, the timeout between two simulated "roatation clicks" by __LP__ on "Band+" (for simulating turns right) or "Band-" (left) are set by __ESM_SLOWDOWN 0__ and calculated as __(n + 1) *  BUTTONTIME_LONGPRESSREPEAT__ (in ms) with the default value 0 as the fastest possible.
+    - ESM will be cancelled automatically, if the timeout set by __#define ESM_TIMEOUT 60__ (in seconds!) has been elapsed after the last usage of "Band+"/"Band-"/"AGC"-button to simulate encoder events. If __ESM_TIMEOUT__ is set to 0, ESM can only by cancelled by __LP__ on "Mode".
 - __#define ENCODER_DELAY 2__ controls the __LP(once)__ behaviour of the "Encoder" button (to Mute/Unmute the device):
     - if set to 0 __LP(once)__ event to Mute/Unmute will be disabled
     - any other number __n__ will define the timeout to Mute/Unmute  to be __(n - 1) * BUTTONTIME_LONGPRESSREPEAT + BUTTONTIME_LONGPRESS1__ (in ms). 
@@ -308,6 +310,7 @@ Some configuration settings that do not fit into any other category can be defin
 - __#define DEFAULT_VOLUME__ sets the default volume (only used if no valid entry was saved to EEPROM before), must be between 0 and 63
 - __#define DEFAULT_BAND__ sets the index of the band to be played (only used ifno valid entry was saved to EEPROM before), must be between 0 and __lastBand__
 - __#define RDS_OFF__ disables RDS if set to non-zero or enables RDS if set to 0 (only used if no valid entry was saved to EEPROM before)
+- __#define BFO_TIMEOUT 20__ sets a timeout after which the BFO-mode will stop if BFO settings have not been changed (in seconds). If set to 0, BFO-mode can be cancelled by shortpress on encoder only.
 - __#define DISPLAY_OLDSTYLE__ will set display behaviour to old mode, if set to non-zero. Main differences in the (default) new mode are:
   - if a parameter is changed by encoder, not only the parameter name but also the parameter value self is displayed in inverted style
   - if the BFO setting is linked to the encode, the BFO-line (and no longer the frequency) are displayed in inverted mode

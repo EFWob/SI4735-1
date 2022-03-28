@@ -83,7 +83,9 @@
 #include "Config.h"
 #include "patch_ssb_compressed.h" // Compressed SSB patch version (saving almost 1KB)
 
-
+#if defined(DEBUG)
+//#define BFO_TIMEOUT 0
+#endif
 
 
 
@@ -122,8 +124,11 @@ const char bandModeDesc[] = {'F', 'L', 'U', 'A'};
 uint8_t currentMode = FM;
 uint8_t seekDirection = 1;
 
-uint16_t millis16 = 0;    // replacement for call to millis(), stores the timestamp of the most recent call to loop().
+uint16_t millis16;        // replacement for call to millis(), stores the timestamp of the most recent call to loop().
                           // can be used to control timeouts of up to 65 seconds, which is enough for the all use cases here 
+#if ((0 != BFO_TIMEOUT) || (0 != ESM_TIMEOUT))
+uint16_t seconds;
+#endif
 
 bool bfoOn = false;
 bool encoderMode = false;
@@ -131,20 +136,7 @@ bool encoderMode = false;
 bool ssbLoaded = false;
 bool fmStereo = true;
 bool rdsOff = 0 != RDS_OFF;
-/*
-bool cmdVolume = false;   // if true, the encoder will control the volume.
-bool cmdAgcAtt = false;   // if true, the encoder will control the AGC / Attenuation
-bool cmdStep = false;     // if true, the encoder will control the step frequency
-bool cmdBw = false;       // if true, the encoder will control the bandwidth
-bool cmdBand = false;     // if true, the encoder will control the band
-bool cmdSoftMute = false; // if true, the encoder will control the Soft Mute attenuation
-bool cmdAvc = false;      // if true, the encoder will control Automatic Volume Control
-#if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
-bool cmdVfo = false;
-#endif
 
-bool currentCmd = false;    // only true, if any of the cmdXxxx-flags above is true
-*/
 #define CMD_NONE      0
 #define CMD_Volume    _BV(0)
 #define CMD_AgcAtt    _BV(1)
@@ -158,6 +150,8 @@ bool currentCmd = false;    // only true, if any of the cmdXxxx-flags above is t
 #endif
 uint8_t currentCmd = CMD_NONE;
 
+uint16_t bfoStart;
+uint16_t esmStart;
 
 bool attDirty = false;    // if true, AGC/Att needs to be redrawn on screen
 
@@ -276,7 +270,7 @@ typedef struct
   uint16_t minimumFreq;    // Minimum frequency of the band
   uint16_t maximumFreq;    // Maximum frequency of the band
   uint16_t currentFreq;    // Default frequency or current frequency
-  uint16_t currentStepIdx; // Idex of tabStep:  Defeult frequency step (See tabStep)
+  uint8_t currentStepIdx; // Idex of tabStep:  Defeult frequency step (See tabStep)
   int8_t bandwidthIdx;    // Index of the table bandwidthFM, bandwidthAM or bandwidthSSB;
 } Band;
 
@@ -825,6 +819,9 @@ bool direction = (BANDUP_BUTTON == pin);
 #else
         encoderCount = direction?1:-1;
 #endif       
+#if defined(ESM_TIMEOUT)
+        esmStart = seconds;
+#endif        
       }
       event = BUTTON_IDLE;
     }
@@ -1136,6 +1133,9 @@ uint8_t agcEvent(uint8_t event, uint8_t pin) {
     else
     {
       encoderEvent(event, 0);
+#if defined(ESM_TIMEOUT)
+      esmStart = seconds;
+#endif        
       return BUTTON_IDLE;
     }
 #endif
@@ -1232,6 +1232,10 @@ static uint8_t count = 0;
       if (!--count)
       {
         encoderMode = !encoderMode;
+#if (0 != ESM_TIMEOUT)
+        if (encoderMode)
+          esmStart = seconds;
+#endif
         showEncoderMode();
       }
   }
@@ -1291,6 +1295,10 @@ uint8_t encoderEvent(uint8_t event, uint8_t pin) {
     if (currentMode == LSB || currentMode == USB)
     {
       bfoOn = !bfoOn;
+#if (0 != BFO_TIMEOUT)
+      if (bfoOn)
+        bfoStart = seconds;
+#endif
 #if (0 != DISPLAY_OLDSTYLE)
       showFrequency();
 #endif
@@ -1807,7 +1815,7 @@ void showStatus()
 
 char *stationName;
 char bufferStatioName[20];
-long rdsElapsed = millis();
+uint16_t rdsElapsed = 0;
 
 char oldBuffer[15];
 
@@ -1858,7 +1866,7 @@ void showRDSStation()
 */
 void checkRDS()
 {
-  if (millis() - rdsElapsed < 100)
+  if (millis16 - rdsElapsed < 100)
     return;
   si4735.getRdsStatus();
   if (si4735.getRdsReceived())
@@ -1870,7 +1878,7 @@ void checkRDS()
       {
         showRDSStation();
         // si4735.resetEndGroupB();
-        rdsElapsed = millis();
+        rdsElapsed = millis16;
       }
     }
   }
@@ -1925,8 +1933,10 @@ void doStep(int8_t v)
   if ((currentMode == LSB || currentMode == USB) && bfoOn)
   {
     currentBFOStep = (currentBFOStep == 25) ? 10 : 25;
-    //Serial.println("bfoOn");
     showBFO();
+#if (0 != BFO_TIMEOUT)
+    bfoStart = seconds;
+#endif
   }
   else
   {
@@ -2177,6 +2187,9 @@ void doEncoderAction()
       currentBFO = (encoderCount == 1) ? (currentBFO + currentBFOStep) : (currentBFO - currentBFOStep);
       si4735.setSSBBfo(currentBFO);
       showBFO();
+#if (0 != BFO_TIMEOUT)
+      bfoStart = seconds;
+#endif
     }
     else
     {
@@ -2209,7 +2222,12 @@ void doEncoderAction()
 void loop()
 {
 uint8_t x;
+#if ((0 != BFO_TIMEOUT) || (0 != ESM_TIMEOUT))
+  millis16 = millis();
+  seconds = millis() >> 10;
+#else
   millis16 = millis();                   // looses 16 bits, but we are just fine with the lower word...
+#endif
 #if defined(DEBUG) && defined(DEBUG_BUTTONS_ONLY)
   doEncoderAction();
   btn_BandUp.checkEvent(buttonEvent) ;
@@ -2277,5 +2295,29 @@ uint8_t x;
       previousFrequency = currentFrequency;
     }
   }
+#if (0 != BFO_TIMEOUT)
+  if (bfoOn)
+    if (seconds - bfoStart >  BFO_TIMEOUT)
+    {
+      bfoOn = false;
+#if (0 != DISPLAY_OLDSTYLE)
+      showFrequency();
+#endif
+//      if (currentCmd)
+//        toggleCommand(CMD_NONE); // disable all command buttons
+//      else
+        showBFO();
+    }
+#endif  // BFO_TIMEOUT
+
+#if (0 != ESM_TIMEOUT)
+  if (encoderMode)
+    if (seconds - esmStart >  ESM_TIMEOUT)
+    {
+      encoderMode = false;
+      showEncoderMode();
+    }
+#endif  // ESM_TIMEOUT
+
 #endif
 }
