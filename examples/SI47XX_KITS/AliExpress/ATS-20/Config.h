@@ -1,9 +1,11 @@
 #ifndef config_h
 #define config_h
-// CONFIG-SECTION
-#define DEBUG                 // if defined, Serial output will show some info on button press events (at 115200 baud)
+// GLOBAL section
+//#define DEBUG                 // if defined, Serial output will show some info on button press events (at 115200 baud)
 //#define DEBUG_BUTTONS_ONLY    // if defined (in addition to DEBUG), only button events will be reported on Serial, no radio function
-                              // (use this to adjust the BUTTONTIME_XXXX-defines in include file "SimpleButton.h" to your liking)
+                                // (use this to adjust the BUTTONTIME_XXXX-defines in include file "SimpleButton.h" to your liking)
+//#define OLDSTYLE              // if defined, the button behaviour will be like in V7, so no LP/2CLICK, ESM functionality etc
+
 
 // INTROCONFIG section
 
@@ -23,6 +25,12 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
 
 // If both INTRO_LINEDELAY and INTRO_ENDDELAY are set to 0, intro screen will not show at all!
 
+#define INTRO_SILENT            0      // If set to != 0, Audio will start only after intro screen is done 
+                                        // (otherwise already audible during intro)
+
+
+#if !defined(OLDSTYLE)
+
 #define INTRO_LONGPRESSDELAY      2    // Defines how long encoder must be pressed for longpress detection during intro.
                                        //   -if 0, longpress is disabled (will be treated as shortpress and cancel the intro)
                                        //   -if enabled, a longpress with the defined timeout will erase EEPROM
@@ -30,8 +38,6 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
 #define INTRO_CLREEPROMDELAY    2000   // Delay (ms) to display "EEPROM erased" information if radio started with Encoder button pressed.
                                        // (If button is pressed longer, message will stay until button released)
                                        
-#define INTRO_SILENT            0      // If set to != 0, Audio will start only after intro screen is done 
-                                        // (otherwise already audible during intro)
 
 // FUNCTIONCONFIG section
 /* Some of the defines refer to functions that can be reached by longpress on a specific button. The timings described here are the
@@ -195,20 +201,30 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
 #define BFO_TIMEOUT      20  // Automatic timeout for BFO-mode (in seconds!) after start/last change of BFO setting 
                              //   - if set to 0, BFO mode must be cancelled by short-press of encoder
 
+#else
+// Some default defines to be used in "OLDSTYLE"-Mode
+#define DISPLAY_OLDSTYLE 1
+#define INTRO_SILENT 1
+#define RDS_OFF 0
+#define DEFAULT_VOLUME     45
+#define DEFAULT_BAND lastBand
+#define ENCODER_SEARCH     1 
+#endif
+
               
 // PINCONFIG section
 // Pin definitions
 
 // Buttons controllers
-#define BANDUP_BUTTON 8      // Next band
-#define BANDDN_BUTTON 9     // **** Use thi button to implement a new function
-#define VOLUMEUP_BUTTON 6    // Volume Up
-#define VOLUMEDN_BUTTON 7     // **** Use thi button to implement a new function
-#define STEP_BUTTON 10     // Used to select the increment or decrement frequency step (see tabStep)
-#define BANDWIDTH_BUTTON 5 // Used to select the banddwith.
-#define AGC_BUTTON 11      // Switch AGC ON/OF
-#define MODE_BUTTON 4      // Switch MODE (Am/LSB/USB)
-#define ENCODER_BUTTON 14  // Used to select the enconder control (BFO or VFO) and SEEK function on AM and FM modes
+#define BANDUP_BUTTON 8      // "Band+"
+#define BANDDN_BUTTON 9      // "Band-"
+#define VOLUMEUP_BUTTON 6    // "Vol+"
+#define VOLUMEDN_BUTTON 7    // "Vol-"
+#define STEP_BUTTON 10       // "Step"
+#define BANDWIDTH_BUTTON 5   // "BW"
+#define AGC_BUTTON 11        // "AGC"
+#define MODE_BUTTON 4        // "Mode"
+#define ENCODER_BUTTON 14    // "Encoder"
 
 // OLED Diaplay constants
 #define RST_PIN -1 // Define proper RST_PIN if required.
@@ -218,6 +234,19 @@ char* introlines[] =   // Defines the intro lines to be shown at startup. At mos
 // Enconder PINs - if the clockwise and counterclockwise directions are not correct for you, please, invert this settings.
 #define ENCODER_PIN_A 2
 #define ENCODER_PIN_B 3
+
+// MEMSAVE section
+/*
+ * Especially in DEBUG mode memory is short if all functions are on.
+ * If you test new/changed functionality, you must switch off a few functions to be able to add some Serial.println() for debug
+ * Therefore you should disable a few functions that are not needed for your test.
+ * MODE_DELAY, BFO_TIMEOUT or ESM_TIMEOUT are a good start, as they save quite some space if disabled.
+ */
+#if defined(DEBUG)          
+//#define MODE_DELAY  0
+//#define BFO_TIMEOUT 0
+//#define ESM_TIMEOUT 0
+#endif
 
 
 #endif

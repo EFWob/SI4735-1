@@ -113,8 +113,6 @@ const uint16_t cmd_0x15_size = sizeof cmd_0x15;         // Array of lines where 
 #define STORE_TIME 10000 // Time of inactivity to make the current receiver status writable (10s / 10000 milliseconds).
                          // uint16_t, maximum value is 0xffff of (uint16_t)65535 (dec) meaning a bit more than 65 seconds
 
-//const uint8_t app_id = 43; // Useful to check the EEPROM content before processing useful data
-const uint8_t app_id = 45;
 
 const int eeprom_address = 0;
 uint16_t storeTime; // = millis();
@@ -136,6 +134,8 @@ bool encoderMode = false;
 bool ssbLoaded = false;
 bool fmStereo = true;
 bool rdsOff = 0 != RDS_OFF;
+
+bool show = false;
 
 #define CMD_NONE      0
 #define CMD_Volume    _BV(0)
@@ -274,6 +274,8 @@ typedef struct
   int8_t bandwidthIdx;    // Index of the table bandwidthFM, bandwidthAM or bandwidthSSB;
 } Band;
 
+const uint8_t app_id = 69; // Useful to check the EEPROM content before processing useful data
+
 /*
    Band table
    YOU CAN CONFIGURE YOUR OWN BAND PLAN. Be guided by the comments.
@@ -282,6 +284,7 @@ typedef struct
    Also, you can change the parameters of the band.
    ATTENTION: You have to RESET the eeprom after adding or removing a line of this table.
               Turn your receiver on with the encoder push button pressed at first time to RESET the eeprom content.
+              OR: change the app_id above to a different value 
 */
 Band band[] = {
   {LW_BAND_TYPE, 100, 510, 300, 0, 4},
@@ -329,18 +332,36 @@ void doAttenuation(int8_t v);
 void showRSSI(bool force = false);
 
 // show n spaces on display starting at current cursor position
-void oledSpace(uint8_t n)
+void oledSpace(int n)
 {
-  for(uint8_t i = 0;i < n;i++)
+  for(int i = 0;i < n;i++)
     oled.print(' ');
 }
 
+void oledPrint(char *s)
+{
+  oled.print(s);
+}
+
+/*
+void displayPrint(uint8_t x, uint8_t y, char *s)
+{
+int i;
+i = 0;
+  while(*s)
+  {
+    oled.print(*s);
+    i++;s++; 
+  }
+}
+
+*/
 /*
    Switch the radio to current band.
    The bandIdx variable points to the current band.
    This function change to the band referenced by bandIdx (see table band).
 */
-void useBand(bool show = true)
+void useBand()
 {
   if (band[bandIdx].bandType == FM_BAND_TYPE)
   {
@@ -395,6 +416,8 @@ void useBand(bool show = true)
   }
   previousFrequency = currentFrequency = band[bandIdx].currentFreq;
   idxStep = band[bandIdx].currentStepIdx;
+  //Serial.print("Band ");Serial.println(bandIdx);
+  //Serial.println(currentFrequency);
   doBandwidth(0, false);
   if (show)
   {
@@ -409,27 +432,28 @@ void useBand(bool show = true)
    This function loads the contents of the ssb_patch_content array into the CI (Si4735) and starts the radio on
    SSB mode.
 */
-void loadSSB(bool show = true)
+void loadSSB()
 {
-  if (show)
-  {
-    oled.setCursor(0, 2);
-    oledSpace(2);
-    oled.print("Switching to SSB");
-    oledSpace(2);
-  }
+
   // si4735.setI2CFastModeCustom(700000); // It is working. Faster, but I'm not sure if it is safe.
   si4735.setI2CFastModeCustom(500000);
   si4735.queryLibraryId(); // Is it really necessary here? I will check it.
   si4735.patchPowerUp();
+  if (show)
+  {
+    oled.setCursor(2, 2);
+    oled.print(" Switching to SSB  ");
+  }
+  ssbLoaded = true;
   delay(50);
   si4735.downloadCompressedPatch(ssb_patch_content, size_content, cmd_0x15, cmd_0x15_size);
   bwIdxSSB = (bwIdxSSB > BW_MAX_SSB) ? BW_DEFAULT_SSB : bwIdxSSB;
   si4735.setSSBConfig(bandwidthSSB[bwIdxSSB].idx, 1, 0, 1, 0, 1);
   si4735.setI2CStandardMode();
-  ssbLoaded = true;
   if (show)
+  {
     cleanBfoRdsInfo();
+  }
 }
 
 
@@ -466,7 +490,8 @@ void readAllReceiverInformation()
 
   if (currentMode == LSB || currentMode == USB)
   {
-    loadSSB(false);
+    //loadSSB(false);
+    loadSSB();
   }
   else if (currentMode == AM)
   {
@@ -523,7 +548,7 @@ uint16_t stateTime;
     switch (introState) {
       case 0:
         stateTime = millis16;
-        if (LOW == digitalRead(ENCODER_BUTTON) || doClrEEPROM)
+        if (doClrEEPROM)
         {
           introState = INTRO_CLREEPROM;
         }
@@ -573,7 +598,9 @@ uint16_t stateTime;
           stateTime = millis16;
         break;
       case INTRO_WAIT:
+#if defined(INTRO_CLREEPROMDELAY)
           if (millis16 - stateTime > INTRO_CLREEPROMDELAY)
+#endif
             if (HIGH == digitalRead(ENCODER_BUTTON))
               introState = INTRO_RELEASE;
         break;  
@@ -584,6 +611,8 @@ uint16_t stateTime;
           }
         break;  
       case INTRO_BEFOREDONE:
+        oled.clear();
+        show = true;
 #if (0 == INTRO_SILENT)
         showStatus();
         if (FM == currentMode)
@@ -600,6 +629,7 @@ uint16_t stateTime;
           readAllReceiverInformation();
         }
         si4735.setVolume(volume);
+        
         useBand();
         //if (FM == currentMode)
         //  cleanBfoRdsInfo();
@@ -622,7 +652,7 @@ uint16_t stateTime;
 
 void setup()
 {
-  bool clearEEPROM = (LOW == digitalRead(ENCODER_BUTTON));
+  bool clearEEPROM = (LOW == digitalRead(ENCODER_BUTTON)) || (EEPROM.read(0) != app_id);
 
   // Encoder pins
   pinMode(ENCODER_PIN_A, INPUT_PULLUP);
@@ -654,8 +684,6 @@ void setup()
 
 
   
-  if (clearEEPROM)
-    EEPROM.write(eeprom_address, 0);
 
   // Set up the radio for the current band (see index table variable bandIdx )
 #if (0 == INTRO_SILENT)
@@ -665,12 +693,15 @@ void setup()
   si4735.setAvcAmMaxGain(48); // Sets the maximum gain for automatic volume control on AM/SSB mode (between 12 and 90dB)
 
   // Checking the EEPROM content
-  if (EEPROM.read(eeprom_address) == app_id)
+  if (!clearEEPROM)
   {
     readAllReceiverInformation();
   }
+  else
+    EEPROM.write(eeprom_address, 0);
   si4735.setVolume(volume);
-  useBand(false);
+  //useBand(false);
+  useBand();
 #endif
   // Splash - Change orit for your introduction text or remove the splash code.
 
@@ -1133,7 +1164,7 @@ uint8_t agcEvent(uint8_t event, uint8_t pin) {
     else
     {
       encoderEvent(event, 0);
-#if defined(ESM_TIMEOUT)
+#if (0 != ESM_TIMEOUT)
       esmStart = seconds;
 #endif        
       return BUTTON_IDLE;
@@ -1479,7 +1510,7 @@ void showFrequency()
   {
 //    unit = (char *)"kHz";
     if (band[bandIdx].bandType == MW_BAND_TYPE || band[bandIdx].bandType == LW_BAND_TYPE)
-      convertToChar(currentFrequency, freqDisplay, 5, 0, '.');
+      convertToChar(currentFrequency, freqDisplay, 6, 0, '.');
     else
       convertToChar(currentFrequency, freqDisplay, 5, 2, '.');
   }
@@ -1532,7 +1563,7 @@ bool checkStopSeeking()
 void showBandDesc()
 {
   char *bandMode;
-  char buf[4];
+  char buf[5];
   if (currentFrequency < 520)
     bandMode = (char *)"LW  ";
   else
@@ -1547,13 +1578,14 @@ void showBandDesc()
     {
       buf[1] = 'S';buf[2] = 'B';
     }
-    buf[3] = 0;
+    buf[3] = ' ';
+    buf[4] = 0;
     //bandMode = (char *)bandModeDesc[currentMode];
   }
   oled.setCursor(0, 0);
-  oledSpace(4);
+  //oledSpace(4);
   //oled.print("    ");
-  oled.setCursor(0, 0);
+  //oled.setCursor(0, 0);
   oled.invertOutput(currentCmd & CMD_Band);
   oled.print(bandMode);
   oled.invertOutput(false);
@@ -1585,13 +1617,13 @@ static int8_t lastBars = -1;
   {
     lastBars = bars;
     oled.setCursor(90, 3);
-    oledSpace(6);
-  //oled.print("      ");
-    oled.setCursor(90, 3);
     oled.print(".");
-    for (int i = 0; i < bars; i++)
+    int i;
+    for (i = 0; i < bars; i++)
       oled.print('_');
     oled.print('|');
+    for(i++;i < 5;i++)
+      oled.print(' ');
   }
 }
 
@@ -1763,12 +1795,12 @@ void showAvc() {
 void showBFO()
 {
   oled.setCursor(0, 2);
-  oledSpace(14);
-  oled.setCursor(0, 2);
 #if (0 == DISPLAY_OLDSTYLE)  
   oled.invertOutput(bfoOn  && !currentCmd);
 #endif
-  oled.print("BFO: ");
+  oled.print("BFO:  ");
+  oledSpace(7);
+  oled.setCursor(25, 2);
   oled.print(currentBFO);
   oled.print("Hz");
 #if (0 != DISPLAY_OLDSTYLE)  
@@ -1776,7 +1808,6 @@ void showBFO()
 #endif
 
   oled.invertOutput(currentCmd & CMD_Step);
-  oled.setCursor(93, 2);
   oled.setCursor(93, 2);
   oled.print("S:");
 #if (0 != DISPLAY_OLDSTYLE)
@@ -1802,14 +1833,23 @@ void showEncoderMode()
 */
 void showStatus()
 {
-  oled.clear();
-  showFrequency();
+static uint8_t lastModeShown = 0xff;  
+  if (lastModeShown != currentMode)
+  {
+    if ((USB != currentMode) && (LSB != currentMode))
+      cleanBfoRdsInfo();
+    showAttenuation();
+  }
+  showFrequency();  
   showBandDesc();
   showStep();
   showBandwidth();
-  showAttenuation();
-  showRSSI(true);
-  showVolume(); 
+  if (0xff == lastModeShown)
+  {
+    showVolume(); 
+    showRSSI(true);
+  }
+  lastModeShown = currentMode;
 }
 
 
@@ -2091,10 +2131,7 @@ void doBandwidth(int8_t v, bool show = true)
 void toggleCommand(uint8_t cmd)
 {
 uint8_t lastCmd = currentCmd;
-  if (currentCmd != cmd)
-    currentCmd = cmd;
-  else
-    currentCmd = CMD_NONE;
+  currentCmd = (currentCmd == cmd)?CMD_NONE:cmd;
   if (currentCmd != CMD_NONE)
     {
       if (bfoOn)
@@ -2153,17 +2190,28 @@ void doEncoderAction()
   if (encoderCount != 0)
   {
 #if defined(DEBUG)
-    Serial.print("Encoder turned ");
+    Serial.print("Encoder Turn ");
     if (encoderCount > 0)
-      Serial.println("right");
+      Serial.println("Right");
     else
-      Serial.println("left");
+      Serial.println("Left");
 #if defined(DEBUG_BUTTONS_ONLY)
     encoderCount = 0;
     return;
 #endif
 #endif
-    if (currentCmd & CMD_Volume)
+    if (muteVolume)
+    {
+      doVolume(0);
+#if (0 == DISPLAY_OLDSTYLE) && (0 != INVERT_VFO)
+      if (!currentCmd)
+      {
+        currentCmd = CMD_Vfo;
+        showFrequency();
+      }
+#endif
+    }
+    else if (currentCmd & CMD_Volume)
       doVolume(encoderCount);
     else if (currentCmd & CMD_AgcAtt)
       doAttenuation(encoderCount);
@@ -2191,11 +2239,9 @@ void doEncoderAction()
       bfoStart = seconds;
 #endif
     }
-    else
+    else  
     {
-      if (muteVolume)
-        doVolume(0);
-      else if (encoderCount == 1)
+      if (encoderCount == 1)
       {
         si4735.frequencyUp();
         seekDirection = 1;
@@ -2211,7 +2257,7 @@ void doEncoderAction()
       currentCmd = CMD_Vfo;
 #endif
       showFrequency();
-    }
+    }   
     encoderCount = 0;
     resetEepromDelay(); // if you moved the encoder, something was changed
     elapsedRSSI = millis16; //millis();

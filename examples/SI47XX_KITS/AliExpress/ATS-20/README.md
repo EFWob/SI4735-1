@@ -3,7 +3,7 @@
 **This example is intended to be merged to https://github.com/pu2clr/SI4735/tree/master/examples/SI47XX_KITS/AliExpress/SI473X_ALL_IN_ONE_OLED_RDS_CHINESE_V8. This fork exists just for preparing the pull request. The work to be done is to finish this README and to fix some errors if found on the go...**
 
 This example had the https://github.com/pu2clr/SI4735/tree/master/examples/SI47XX_KITS/AliExpress/SI473X_ALL_IN_ONE_OLED_RDS_CHINESE_V7 as starting point. The functionality has not changed in general but has some rework on the user-interface:
-- The display does not flicker anymore if no values are changed (will be especially visible in AM/SSB-display).
+- The display does not flicker anymore if no values are changed. This change will be especially visible in AM/SSB-display or if you switch between bands.
 - Buttons are now linked to more than one function (see section [User manual](#user-manual) below) by using i. e. double-click or longpress events.
 - The display style while changing a parameter has changed. Not only the parameter name but also the changed value are displayed in inverted style. This change is especially noticeable if the BFO setting is changed this way. Here the BFO-line (and no longer the frequency of the VFO) will be inverted. The frequency will be inverted if changed by turing the rotary encoder.
 - A ([configurable](#miscellaneous-configuration)) timeout for the BFO-mode has been added.
